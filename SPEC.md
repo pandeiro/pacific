@@ -155,3 +155,165 @@ The shared network approach keeps things clean and avoids port conflicts.
 | Containerization | Docker, Docker Compose |
 | CI/CD | GitLab CI/CD |
 | Monitoring | Health check endpoints + Telegram notifications |
+
+## Data Model
+
+### Core Tables
+
+**locations**
+```
+id, name, slug, lat, lng, location_type (beach, tidepool, viewpoint, harbor, island),
+region (south_coast, la_coast, ventura, central_coast, channel_islands),
+noaa_station_id (nullable, for tide data), description, metadata (jsonb)
+```
+
+**sightings** (TimescaleDB hypertable, partitioned by time)
+```
+id, timestamp, location_id (FK), species, count (nullable),
+source (e.g. 'harbor_breeze', 'inaturalist', 'island_packers'),
+source_url (nullable), raw_text (nullable), confidence (high/medium/low),
+metadata (jsonb - flexible fields per source)
+```
+
+**conditions** (TimescaleDB hypertable)
+```
+id, timestamp, location_id (FK), condition_type (visibility, water_temp, air_temp,
+swell_height, swell_period, wind_speed, wind_direction),
+value (numeric), unit, source, raw_text (nullable), metadata (jsonb)
+```
+
+**tides** (TimescaleDB hypertable)
+```
+id, timestamp, station_id, type (high/low/predicted), height_ft, source
+```
+
+**sun_events**
+```
+id, date, location_id (FK), sunrise, sunset, golden_hour_start, golden_hour_end
+```
+
+**live_cams**
+```
+id, name, location_id (FK), embed_type (youtube, iframe, hls),
+embed_url, source_name, is_active (boolean), sort_order
+```
+
+**scrape_logs**
+```
+id, scraper_name, started_at, finished_at, status (success/failure/partial),
+records_created, error_message (nullable)
+```
+
+**seasonal_events**
+```
+id, name, slug, description, typical_start_month, typical_start_day,
+typical_end_month, typical_end_day, species (nullable),
+category (migration, spawning, bloom, season, celestial), metadata (jsonb)
+```
+
+**activity_scores** (TimescaleDB hypertable)
+```
+id, timestamp, location_id (FK), activity_type (snorkeling, whale_watching,
+body_surfing, scenic_drive, tidepool_exploring), score (0-100),
+factors (jsonb - breakdown of what contributed to score), summary_text
+```
+
+### Design Notes
+
+- **jsonb metadata columns** on most tables allow flexible per-source fields without schema changes
+- **TimescaleDB hypertables** on time-series data enable efficient historical queries ("average visibility by month") and automatic data retention policies
+- **source tracking** on every record enables data quality analysis and per-source reliability scoring
+- **raw_text preservation** allows re-processing with improved LLM extraction later
+
+## Scraper Inventory
+
+Each scraper is a Python module within the scraper worker. They share common infrastructure (HTTP client, database connection, error handling, logging) but have independent schedules and parsing logic.
+
+### Tier 1: Structured APIs (most reliable)
+
+| Scraper | Source | Data Type | Schedule | Notes |
+|---------|--------|-----------|----------|-------|
+| **noaa_tides** | NOAA CO-OPS API | Tides | Daily | Free API, predictions + verified observations |
+| **noaa_water_temp** | NOAA CO-OPS API | Water temperature | Every 6 hours | Same API, buoy data |
+| **sunrise_sunset** | sunrise-sunset.org API | Sun events | Daily | Free, no key needed |
+| **inaturalist** | iNaturalist API | Wildlife sightings | Every 6 hours | Filter by species list + bounding box |
+| **google_drive_times** | Google Maps Directions API | Drive times | On-demand (API call from frontend) | Free tier: 40k direction requests/month |
+
+### Tier 2: Website Scraping (semi-structured)
+
+| Scraper | Source | Data Type | Schedule | Notes |
+|---------|--------|-----------|----------|-------|
+| **south_coast_divers** | southcoastdivers.com | Dive conditions (vis, temp, swell) | Twice daily | Near-daily blog posts about Laguna conditions |
+| **harbor_breeze** | 2seewhales.com | Whale/dolphin sightings | Twice daily | Trip reports with species and counts |
+| **daveys_locker** | daveyslocker.com | Whale/dolphin sightings | Twice daily | Similar trip report format |
+| **island_packers** | islandpackers.com | Marine mammal sightings | Daily | Sightings log on website |
+| **dana_wharf** | danawharf.com | Whale/dolphin sightings | Twice daily | Trip reports |
+
+### Tier 3: Social Media
+
+| Scraper | Source | Data Type | Schedule | Notes |
+|---------|--------|-----------|----------|-------|
+| **twitter_parks** | X/Twitter via JSON API proxy | Park updates, closures, events | Every 4 hours | NPS, CA State Parks, county parks accounts |
+| **twitter_wildlife** | X/Twitter via JSON API proxy | Sighting reports | Every 4 hours | Marine biologist accounts, whale watch accounts |
+
+### Tier 4: Embeds (no scraping needed)
+
+| Source | Type | Notes |
+|--------|------|-------|
+| **Explore.org YouTube** | Live cam embeds | Anacapa underwater, Catalina eagle nest, etc. |
+| **Beach cams** | Live cam embeds | Various - Santa Monica, Hermosa, Laguna, Malibu, Zuma, Morro Bay |
+
+### Scraper Architecture
+
+Each scraper module implements a common interface:
+
+```python
+class BaseScraper:
+    name: str
+    schedule: str  # cron expression
+    
+    async def scrape(self) -> ScrapeResult:
+        """Fetch and parse data from source."""
+        ...
+    
+    async def process(self, raw_data) -> list[Record]:
+        """Transform raw data into database records.
+        May use local LLM for text extraction."""
+        ...
+```
+
+- Scrapers that process natural language text (dive reports, trip logs) can optionally route through the **local LLM service** for structured data extraction
+- All scrapers log their runs to `scrape_logs` for monitoring
+- Failed scrapers don't block other scrapers
+- Each scraper can be run independently for testing: `python -m scrapers.south_coast_divers`
+
+### Target Species List (for iNaturalist + sighting scrapers)
+
+**Marine Mammals**: Gray whale, Blue whale, Humpback whale, Fin whale, Minke whale, Orca, Common dolphin, Bottlenose dolphin, Sea otter, California sea lion, Harbor seal, Elephant seal
+
+**Fish & Invertebrates**: Garibaldi, Horn shark, Leopard shark, Great white shark, Sheepshead, Mola mola (ocean sunfish), Grunion, Steelhead trout, Market squid, Octopus (multiple species), Kelp crab, Fiddler crab, Sea stars (multiple species), Lobster (California spiny)
+
+**Other**: Brown pelican, Western snowy plover (threatened), California least tern (endangered)
+
+### Seasonal Events Calendar
+
+| Event | Typical Period | Category |
+|-------|---------------|----------|
+| Gray whale southbound migration | Dec - Feb | migration |
+| Gray whale northbound migration | Feb - Apr | migration |
+| Blue whale season | Jun - Oct | migration |
+| Humpback whale season | Apr - Nov | migration |
+| Grunion runs | Mar - Aug (peak) | spawning |
+| Steelhead migration | Dec - Mar | migration |
+| California spiny lobster season | Oct - Mar | season |
+| Bioluminescence (dinoflagellate blooms) | Apr - Jun (variable) | bloom |
+| Red tide events | Variable, spring/summer | bloom |
+| Giant kelp peak growth | Spring - early summer | bloom |
+| Elephant seal pupping (San Simeon) | Dec - Mar | breeding |
+| Elephant seal molting (San Simeon) | Apr - Aug | breeding |
+| Market squid spawning | Variable, often winter | spawning |
+| Peak garibaldi nesting | Mar - Oct | breeding |
+| Brown pelican nesting (Channel Islands) | Feb - Aug | breeding |
+| Lowest tides of year (best tidepooling) | Nov - Mar (early morning) | tidal |
+| Warmest water temps | Aug - Oct | conditions |
+| Best underwater visibility | Aug - Nov | conditions |
