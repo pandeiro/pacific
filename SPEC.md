@@ -317,3 +317,143 @@ class BaseScraper:
 | Lowest tides of year (best tidepooling) | Nov - Mar (early morning) | tidal |
 | Warmest water temps | Aug - Oct | conditions |
 | Best underwater visibility | Aug - Nov | conditions |
+
+## Dashboard Layout
+
+### Layout Philosophy
+
+Information-dense, tiled, no wasted space. Think mission control, not marketing page. Every tile earns its screen real estate by answering a question the user actually asks.
+
+Tiles have a fixed default layout (no drag-and-drop for MVP) but any tile can be **maximized** to fill the viewport (especially useful for map and live cams). The layout is responsive enough to be usable on mobile (single-column stack) but is designed for a desktop/laptop screen.
+
+### Tile Grid (Desktop)
+
+```
+┌───────────────┬──────────────────────┬──────────────────────┐
+│               │  Activity Scores     │  Live Cam              │
+│               │  🤿 Snorkeling: Good  │  [switchable feed]     │
+│               │  🐋 Whales: Great    │  [maximize button]     │
+│   MAP         │  🏄 Surf: Fair       │                        │
+│               │  🚗 Scenic: Excellent│──────────────────────┤
+│  (full height) │                      │  Wildlife Intel         │
+│               ├──────────────────────┤  Recent sightings,     │
+│  (rotated to  │  Conditions            │  species, locations    │
+│   align with  │  Water: 65°F            │  source attribution    │
+│   coastline)  │  Vis: 12-15ft          │                        │
+│               │  Swell: 2-3ft @ 12s   ├──────────────────────┤
+│               │  Wind: 5mph W          │  Tides                  │
+│               │  Air: 72°F             │  Next low: 5:23am -0.2'│
+│               ├──────────────────────┤  [tide curve graphic]  │
+│               │  Drive Times           │  Sunrise: 6:42am       │
+│               │  Laguna: 48min         │  Sunset: 5:58pm        │
+│               │  Pt Vicente: 22min     │  Golden hr: 5:12pm     │
+│               │  Leo Carrillo: 35min   │                        │
+└───────────────┴──────────────────────┴──────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│  Seasonal Timeline                                           │
+│  [========|=====>                                    ]       │
+│  Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec │
+│  🐋 gray whales    🐟 grunion     🐋 blue whales   🫞 lobster  │
+└───────────────────────────────────────────────────────────┘
+```
+
+### Tile Inventory
+
+#### 1. Map Tile
+- **Position**: Left column, full viewport height
+- **Tech**: Leaflet or Mapbox GL JS (free tier)
+- **Features**:
+  - Rotated/angled to align with the NW-SE coastline orientation
+  - Toggleable layers: locations by type, recent sightings (color-coded by species category), live conditions indicators
+  - "Drive time" layer: shows isochrone or labeled drive times from configured home lat/lng to each location
+  - Click a location for detail popup (conditions, recent sightings, next tide)
+  - On mobile: can use current GPS location for drive times instead of home
+- **Data sources**: Google Maps Directions API (drive times), all location + sighting data from DB
+
+#### 2. Activity Scores Tile
+- **Position**: Top center
+- **Tech**: React component with simple visual indicators
+- **Activities scored**:
+  - 🤿 **Snorkeling**: weighted from visibility, water temp, swell, wind, recent marine life sightings
+  - 🐋 **Whale Watching**: weighted from recent sighting frequency, sea conditions, season
+  - 🏄 **Body Surfing**: wave height, period, wind, water temp, hazard reports
+  - 🚗 **Scenic Drive**: air temp, cloud cover, visibility, golden hour proximity
+  - 🧪 **Tidepooling**: tide height (lower = better), time to next extreme low, swell (calmer = safer)
+- **Score display**: 0-100 mapped to Poor / Fair / Good / Great / Epic with color coding
+- **Each score expandable** to show the top recommended location for that activity and contributing factors
+
+#### 3. Live Cam Tile
+- **Position**: Top right
+- **Tech**: YouTube iframe embeds, possibly HLS for non-YouTube sources
+- **Features**:
+  - Dropdown/tabs to switch between available live feeds
+  - Maximize button to go full viewport
+  - Shows cam name, location, and whether feed is currently live
+  - Cam list managed in `live_cams` database table
+- **Initial cam list** (to be researched and expanded):
+  - Explore.org Anacapa underwater
+  - Explore.org Channel Islands eagle nest
+  - Santa Monica beach cam
+  - Hermosa Beach cam
+  - Laguna Beach cam
+  - Malibu cam
+  - Zuma Beach cam
+  - Morro Bay cam
+
+#### 4. Conditions Tile
+- **Position**: Middle center
+- **Tech**: React component, possibly small D3 sparklines for trends
+- **Shows current conditions** for a selected location (or "best" location):
+  - Water temperature (with 7-day sparkline)
+  - Underwater visibility (with trend)
+  - Swell height and period
+  - Wind speed and direction
+  - Air temperature
+- **Location selector**: dropdown or synced with map selection
+- **Source attribution**: shows which source reported each data point
+
+#### 5. Wildlife Intelligence Tile
+- **Position**: Right column, middle
+- **Tech**: React component, scrollable feed
+- **Shows**:
+  - Recent sightings in reverse chronological order
+  - Species icon/emoji, count, location, time, source
+  - Filterable by species category (whales, sharks, invertebrates, etc.)
+  - "Hot" indicator for unusual or notable sightings
+- **Data sources**: All sighting scrapers + iNaturalist
+
+#### 6. Tides & Sun Tile
+- **Position**: Right column, bottom
+- **Tech**: D3 for tide curve visualization
+- **Shows**:
+  - Tide curve for next 24-48 hours with current position marked
+  - Next high/low tide time and height
+  - Sunrise, sunset, golden hour times
+  - Moon phase (useful for tide extremes and night activities)
+- **Location-aware**: shows data for nearest NOAA station to selected location
+
+#### 7. Drive Times Tile
+- **Position**: Bottom center
+- **Tech**: React component
+- **Shows**: Estimated current drive time from home (or current location on mobile) to each saved location
+- **Sorted by**: drive time ascending ("what's closest right now?")
+- **Updates**: on-demand when tile is visible (to conserve API quota)
+- **Google Maps API**: uses Directions API with departure_time=now for traffic-aware estimates
+
+#### 8. Seasonal Timeline Tile
+- **Position**: Bottom, full width
+- **Tech**: D3 or custom SVG
+- **Shows**:
+  - Linear 12-month timeline with current date marker
+  - Horizontal bars for each seasonal event (whale migrations, grunion, lobster season, etc.)
+  - Color-coded by category (migration, spawning, bloom, season)
+  - Hoverable for details
+  - Visual emphasis on "what's happening now" and "what's coming up"
+- **Data source**: `seasonal_events` table (mostly static, curated data)
+
+### Tile Behavior
+
+- **Server push**: Tiles subscribe to WebSocket channels. When the scraper writes new data, the API server pushes updates to connected clients. No polling needed for most tiles.
+- **Maximize**: Any tile can be maximized to fill the viewport. Press Escape or click a close button to restore.
+- **Loading states**: Each tile manages its own loading/error state independently.
+- **Mobile**: Tiles stack vertically in a single column. Map tile becomes a standard (non-rotated) map at the top.
