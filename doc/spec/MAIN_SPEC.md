@@ -31,7 +31,7 @@ Example (good):
 Example (bad - too robotic):
 > Shaw's Cove: Visibility 12-15ft. Water temp 65°F. Species reported: Garibaldi, horn shark (juvenile). Wind: onshore expected PM.
 
-This voice profile should guide LLM prompts, template text, and any editorial content in the dashboard.
+This voice profile should guide LLM prompts (those aimed at producing copy), template text, and any editorial content in the dashboard.
 
 ## Geographic Scope
 
@@ -621,7 +621,7 @@ HOME_LNG=-118.XXXX
 TELEGRAM_WEBHOOK_URL=http://devbot:8080/notify
 
 # Local LLM (optional)
-LLM_SERVICE_URL=http://llm:8000/v1
+LLM_SERVICE_URL=http://172.:8000/v1
 
 # Twitter proxy
 TWITTER_PROXY_URL=http://twitter-proxy:8080
