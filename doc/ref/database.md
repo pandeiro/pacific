@@ -1,7 +1,7 @@
 # Technical Reference: Database
 
 ## 1. Schema Overview
-Pacific uses PostgreSQL 16 with the TimescaleDB extension for time-series data.
+Pacifica uses PostgreSQL 16 with the TimescaleDB extension for time-series data.
 
 ### Core Tables
 - **`locations`**: Static coastal locations (lat/lng, region, type).

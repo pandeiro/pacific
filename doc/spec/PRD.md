@@ -1,7 +1,7 @@
-# Pacific - Product Requirements Document
+# Pacifica - Product Requirements Document
 
 ## 1. Vision
-Pacific is a real-time coastal intelligence dashboard for the Southern California coastline. It aggregates data from dozens of sources—official APIs, amateur dive reports, whale watch trip logs, live cams, citizen science platforms, and social media—into a single, information-dense, tiled interface.
+Pacifica is a real-time coastal intelligence dashboard for the Southern California coastline. It aggregates data from dozens of sources—official APIs, amateur dive reports, whale watch trip logs, live cams, citizen science platforms, and social media—into a single, information-dense, tiled interface.
 
 The goal is to provide a "Mission Control" for the curious, active Southern Californian to know what's happening on their coast right now and what's coming up.
 
@@ -17,7 +17,7 @@ All generated text and summaries should read like a **passionate, knowledgeable 
 - **Key regions**: South Coast (Laguna, Dana Point), LA/OC Coast (Palos Verdes, Malibu), Ventura/Central Coast (Channel Islands, Morro Bay).
 
 ## 4. Technical Architecture
-Pacific uses a multi-container architecture deployed via Docker Compose.
+Pacifica uses a multi-container architecture deployed via Docker Compose.
 
 - **Frontend**: React (Vite/TypeScript/D3) static SPA.
 - **API Server**: Python (FastAPI) serving REST and WebSockets.

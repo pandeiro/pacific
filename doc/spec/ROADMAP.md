@@ -1,6 +1,6 @@
-# Pacific - Roadmap
+# Pacifica - Roadmap
 
-This roadmap tracks the vertical slices of the Pacific dashboard. Each slice is a functional unit from database to UI.
+This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is a functional unit from database to UI.
 
 ## Foundation & Infrastructure
 - [ ] **Card 01: Scraper Base & Infrastructure** ([Spec](../ref/scrapers.md))
