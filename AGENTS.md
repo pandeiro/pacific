@@ -55,6 +55,7 @@ Before starting any work, run through `KICKOFF.md` to:
 4. Begin work with the relevant spec loaded
 
 ### After Completing Work
+- **Update project status** with a new line in doc/progress/SUMMARY.md about what work was done and its status
 - **Stage and commit** your changes with a descriptive message
 - **Never push** to the remote repository unless explicitly told to do so
 - The user will instruct you when to push (e.g., to trigger CI/CD or share progress)

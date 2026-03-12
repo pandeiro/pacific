@@ -115,9 +115,8 @@ Prompt the user with your assessment:
 
 1. Commit all changes with a descriptive message.
 2. Update `doc/progress/SUMMARY.md`:
-   - Move the card from "In Progress" or "Next Up" to "Completed"
-   - Add any notes about blockers or follow-ups
-3. Push to the appropriate branch (or main).
+   - Add a line for this work item with short description and blockers/follow-ups
+3. Clearly relay status to user and ask if they want you to push changes
 
 ---
 
@@ -128,10 +127,10 @@ Prompt the user with your assessment:
 On branch main. Working tree clean.
 
 > cat doc/progress/SUMMARY.md
-## Completed
-- [x] Card 01: Scraper Base Class
-## Next Up
-- Card 02: WebSocket Protocol
 
-> "Card 02 involves implementing the WebSocket connection manager, message types, and client-side reconnection hook. It's medium complexity. Should I create a feature branch (`feature/02-websockets`) or work on main?"
+# Progress Summary
+
+This document is used to track progress.
+
+2025-03-12 Initial documentation restructure (PRD, Roadmap, Reference library) completed, no issues
 ```
