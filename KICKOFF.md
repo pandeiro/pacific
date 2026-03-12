@@ -20,6 +20,26 @@ If there are uncommitted changes:
 
 ---
 
+## 1.5 Ensure Local Environment is Ready
+
+Before starting work, verify your local environment is set up:
+
+```bash
+# Check Docker is running
+docker compose ps
+
+# If not running, start the full stack:
+docker compose up -d
+
+# Ensure migrations and seed data are current:
+make migrate
+make seed
+```
+
+See `doc/ref/local_dev.md` for full local development setup.
+
+---
+
 ## 2. Inspect Progress
 
 1. Read `doc/progress/SUMMARY.md` to see what's completed and in-progress.
