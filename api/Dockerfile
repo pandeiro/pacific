@@ -2,6 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Accept version as build argument
+ARG VERSION=dev
+ENV APP_VERSION=${VERSION}
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \

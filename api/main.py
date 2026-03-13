@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,7 +9,10 @@ from logging_config import configure_logging, get_logger
 configure_logging()
 logger = get_logger("api")
 
-app = FastAPI(title="Pacifica API", version="0.1.0")
+# Get version from environment (baked into Docker image)
+APP_VERSION = os.getenv("APP_VERSION", "dev")
+
+app = FastAPI(title="Pacifica API", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,7 +26,13 @@ app.add_middleware(
 @app.get("/api/health")
 async def health_check():
     logger.debug("Health check requested")
-    return {"status": "healthy", "service": "pacifica-api"}
+    return {"status": "healthy", "service": "pacifica-api", "version": APP_VERSION}
+
+
+@app.get("/api/version")
+async def get_version():
+    logger.info("Version endpoint called")
+    return {"version": APP_VERSION, "service": "pacifica-api", "api_version": "v1"}
 
 
 @app.get("/api/v1/tides")
