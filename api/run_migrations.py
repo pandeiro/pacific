@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Database migration runner.
-
-Executes SQL migration files in order.
-"""
+"""Database migration runner with structured logging."""
 
 import os
 import sys
@@ -10,12 +7,15 @@ from pathlib import Path
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
+import structlog
+
+logger = structlog.get_logger("migrations")
+
 
 def get_connection():
     """Get database connection from environment."""
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        # Fallback for docker-compose internal networking
         database_url = "postgresql://pacifica:password@postgres:5432/pacifica"
 
     # Convert asyncpg URL to psycopg2 format if needed
@@ -30,17 +30,17 @@ def run_migrations(migrations_dir: str = "/app/migrations"):
     migrations_path = Path(migrations_dir)
 
     if not migrations_path.exists():
-        print(f"Migrations directory not found: {migrations_dir}")
+        logger.warning("Migrations directory not found", path=migrations_dir)
         return
 
     # Get all .sql files and sort them
     sql_files = sorted(migrations_path.glob("*.sql"))
 
     if not sql_files:
-        print("No migration files found")
+        logger.info("No migration files found")
         return
 
-    print(f"Found {len(sql_files)} migration files")
+    logger.info("Running migrations", count=len(sql_files))
 
     conn = get_connection()
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -48,18 +48,22 @@ def run_migrations(migrations_dir: str = "/app/migrations"):
 
     try:
         for sql_file in sql_files:
-            print(f"Running migration: {sql_file.name}")
+            logger.info("Running migration", file=sql_file.name)
             with open(sql_file, "r") as f:
                 sql = f.read()
                 if sql.strip():
                     cursor.execute(sql)
-                    print(f"  ✓ {sql_file.name}")
+                    logger.info("Migration completed", file=sql_file.name)
                 else:
-                    print(f"  - {sql_file.name} (empty)")
+                    logger.warning("Empty migration file", file=sql_file.name)
 
-        print("Migrations completed successfully")
+        logger.info("All migrations completed successfully")
     except Exception as e:
-        print(f"Migration failed: {e}", file=sys.stderr)
+        logger.error(
+            "Migration failed",
+            error=str(e),
+            file=sql_file.name if "sql_file" in locals() else None,
+        )
         sys.exit(1)
     finally:
         cursor.close()
@@ -71,16 +75,16 @@ def run_seed(seed_dir: str = "/app/seed"):
     seed_path = Path(seed_dir)
 
     if not seed_path.exists():
-        print(f"Seed directory not found: {seed_dir}")
+        logger.warning("Seed directory not found", path=seed_dir)
         return
 
     sql_files = sorted(seed_path.glob("*.sql"))
 
     if not sql_files:
-        print("No seed files found")
+        logger.info("No seed files found")
         return
 
-    print(f"Found {len(sql_files)} seed files")
+    logger.info("Loading seed data", count=len(sql_files))
 
     conn = get_connection()
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -88,18 +92,22 @@ def run_seed(seed_dir: str = "/app/seed"):
 
     try:
         for sql_file in sql_files:
-            print(f"Running seed: {sql_file.name}")
+            logger.info("Running seed", file=sql_file.name)
             with open(sql_file, "r") as f:
                 sql = f.read()
                 if sql.strip():
                     cursor.execute(sql)
-                    print(f"  ✓ {sql_file.name}")
+                    logger.info("Seed completed", file=sql_file.name)
                 else:
-                    print(f"  - {sql_file.name} (empty)")
+                    logger.warning("Empty seed file", file=sql_file.name)
 
-        print("Seed data loaded successfully")
+        logger.info("All seed data loaded successfully")
     except Exception as e:
-        print(f"Seed failed: {e}", file=sys.stderr)
+        logger.error(
+            "Seed failed",
+            error=str(e),
+            file=sql_file.name if "sql_file" in locals() else None,
+        )
         sys.exit(1)
     finally:
         cursor.close()
@@ -107,10 +115,7 @@ def run_seed(seed_dir: str = "/app/seed"):
 
 
 if __name__ == "__main__":
-    print("Running database migrations...")
+    logger.info("Starting database setup")
     run_migrations()
-
-    print("\nLoading seed data...")
     run_seed()
-
-    print("\nDatabase setup complete!")
+    logger.info("Database setup complete")
