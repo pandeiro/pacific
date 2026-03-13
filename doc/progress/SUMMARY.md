@@ -10,3 +10,4 @@ Last line = most recent work. Each line = one completed work item.
 [03b] README: Comprehensive overview, tech stack, quick start guide, and development commands
 [04] GitHub Actions CI/CD: Workflow for validation, Docker image builds, staging/production deployment, with deployment documentation
 [04b] CI/CD fixes: Single API architecture, GHCR authentication, frontend VITE_API_URL configuration
+[04c] CI/CD deployment: Successfully deployed to pch.onl and staging.pch.onl
