@@ -1,0 +1,70 @@
+services:
+  # PostgreSQL with TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: pacifica-postgres
+    environment:
+      POSTGRES_DB: pacifica
+      POSTGRES_USER: pacifica
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/migrations:ro
+      - ./db/seed:/seed:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - pacifica
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacifica -d pacifica"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: pacifica-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pacifica:password@postgres:5432/pacifica
+      ENVIRONMENT: development
+      LOG_FORMAT: pretty
+    ports:
+      - "4900:4900"
+    volumes:
+      - ./api:/app
+    networks:
+      - pacifica
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Scraper Service
+  scraper:
+    build:
+      context: ./scraper
+      dockerfile: Dockerfile
+    container_name: pacifica-scraper
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pacifica:password@postgres:5432/pacifica
+      ENVIRONMENT: development
+    volumes:
+      - ./scraper:/app
+    networks:
+      - pacifica
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scraper
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pacifica:
+    driver: bridge
