@@ -286,13 +286,24 @@ jobs:
       - name: Health check
         run: |
           set -e
-          sleep 10
+          
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "Checking production health..."
-            curl -sSf https://pch.onl/api/health
-            echo "Production is healthy!"
+            URL="https://pch.onl/api/health"
+            echo "Waiting for production API to be ready..."
           else
-            echo "Checking staging..."
-            curl -sSf https://staging.pch.onl
-            echo "Staging is up!"
+            URL="https://staging.pch.onl"
+            echo "Waiting for staging to be ready..."
           fi
+          
+          # Poll for up to 60 seconds
+          for i in {1..60}; do
+            if curl -sSf "$URL" > /dev/null 2>&1; then
+              echo "✓ Service is healthy!"
+              exit 0
+            fi
+            echo "  Attempt $i/60 - not ready yet, waiting..."
+            sleep 2
+          done
+          
+          echo "✗ Health check failed after 60 attempts"
+          exit 1
