@@ -1,43 +1,51 @@
 .dashboard {
   height: 100vh;
   display: grid;
-  grid-template-columns: 320px 1fr 320px;
-  grid-template-rows: 1fr auto;
+  grid-template-columns: 300px 1fr 320px;
+  grid-template-rows: 1fr 140px;
   gap: var(--tile-gap);
   padding: var(--tile-gap);
   overflow: hidden;
+  background: var(--abyss);
 }
 
+/* Main content area - left map + center + right columns */
 .dashboard__main {
-  display: grid;
-  grid-template-columns: 320px 1fr 320px;
-  grid-template-rows: repeat(4, 1fr);
-  gap: var(--tile-gap);
-  height: calc(100vh - 120px);
+  display: contents;
 }
 
+/* Map spans full height on the left */
 .dashboard__map {
-  grid-row: 1 / -1;
   grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
 }
 
+/* Center column */
 .dashboard__center {
   grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: var(--tile-gap);
+  min-height: 0;
 }
 
+/* Right column */
 .dashboard__right {
   grid-column: 3;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: var(--tile-gap);
+  min-height: 0;
 }
 
+/* Timeline at bottom spanning all columns */
 .dashboard__timeline {
   grid-column: 1 / -1;
-  height: 100px;
+  grid-row: 2;
+  min-height: 0;
 }
 
 /* Tile Base Styles */
@@ -54,6 +62,8 @@
   flex-direction: column;
   overflow: hidden;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  flex: 1;
+  min-height: 0;
 }
 
 .tile:hover {
@@ -66,16 +76,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.375rem;
   border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
 }
 
 .tile__title {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-secondary);
   display: flex;
@@ -90,6 +101,7 @@
 .tile__content {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* Status Indicators */
@@ -122,10 +134,22 @@
 .score-fair { color: var(--score-fair); }
 .score-poor { color: var(--score-poor); }
 
+/* Remove fixed heights from tile CSS files */
+.map-tile,
+.activity-scores,
+.live-cam,
+.conditions,
+.wildlife-intel,
+.tides-sun,
+.drive-times,
+.seasonal-timeline {
+  min-height: unset;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
-  .dashboard__main {
-    grid-template-columns: 280px 1fr 280px;
+  .dashboard {
+    grid-template-columns: 260px 1fr 280px;
   }
 }
 
@@ -139,15 +163,16 @@
   }
   
   .dashboard__main {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--tile-gap);
   }
   
   .dashboard__map,
   .dashboard__center,
-  .dashboard__right {
-    grid-column: 1;
+  .dashboard__right,
+  .dashboard__timeline {
+    grid-column: auto;
     grid-row: auto;
   }
   
@@ -155,7 +180,12 @@
     height: 400px;
   }
   
-  .dashboard__timeline {
-    grid-column: 1;
+  .dashboard__center,
+  .dashboard__right {
+    flex: none;
+  }
+  
+  .tile {
+    flex: none;
   }
 }

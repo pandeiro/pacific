@@ -49,13 +49,12 @@ export function SeasonalTimelineTile() {
             </div>
             
             <div className="timeline-events">
-              {seasonalEvents.map((event, index) => (
+              {seasonalEvents.map((event) => (
                 <div
                   key={event.name}
                   className={`timeline-event timeline-event--${event.category}`}
                   style={{
                     ...getEventStyle(event),
-                    top: `${6 + (index % 2) * 10}px`,
                   }}
                   title={event.name}
                 >
