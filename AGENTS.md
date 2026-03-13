@@ -65,3 +65,16 @@ Before starting any work, run through `KICKOFF.md` to:
 - **Repository**: https://github.com/pandeiro/pacifica
 - **Production**: https://pch.onl
 - **Staging**: https://staging.pch.onl
+
+## Tools
+
+### Screenshot Capture
+Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification:
+
+```bash
+# Ensure the frontend is running on localhost:4901
+python tools/screenshot.py
+# Output: dashboard_screenshot.png
+```
+
+Use this after making UI changes to verify the visual result.
