@@ -8,15 +8,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY api/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY api/ .
-
-# Copy database migrations and seed (from repo root)
-COPY db/migrations /app/migrations
-COPY db/seed /app/seed
+# Copy application code (includes migrations, seed, entrypoint)
+COPY . .
 
 # Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh

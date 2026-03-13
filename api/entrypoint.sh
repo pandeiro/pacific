@@ -11,13 +11,16 @@ until python3 -c "
 import psycopg2
 import os
 database_url = os.getenv('DATABASE_URL', 'postgresql://pacifica:password@postgres:5432/pacifica').replace('postgresql+asyncpg', 'postgresql')
+print(f'Testing connection to: {database_url.replace(\"password\", \"****\")}')
 try:
     conn = psycopg2.connect(database_url)
     conn.close()
+    print('Connection successful!')
     exit(0)
-except:
+except Exception as e:
+    print(f'Connection failed: {e}')
     exit(1)
-" 2>/dev/null; do
+"; do
   echo "PostgreSQL is unavailable - sleeping"
   sleep 1
 done

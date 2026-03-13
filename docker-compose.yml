@@ -9,8 +9,6 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/migrations:/migrations:ro
-      - ./db/seed:/seed:ro
     ports:
       - "5432:5432"
     networks:
@@ -33,8 +31,6 @@ services:
       LOG_FORMAT: pretty
     ports:
       - "4900:4900"
-    volumes:
-      - ./api:/app
     networks:
       - pacifica
     depends_on:
