@@ -284,24 +284,21 @@ jobs:
           fi
 
       - name: Health check
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
         run: |
           set -e
           
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            URL="https://pch.onl/api/health"
-            echo "Waiting for production API to be ready..."
-          else
-            URL="https://staging.pch.onl"
-            echo "Waiting for staging to be ready..."
-          fi
+          echo "Waiting for API to be ready (checking from VPS)..."
           
-          # Poll for up to 60 seconds
+          # Poll from VPS (API is bound to localhost:4900)
           for i in {1..60}; do
-            if curl -sSf "$URL" > /dev/null 2>&1; then
-              echo "✓ Service is healthy!"
+            if ssh $USER@$HOST "curl -sSf http://localhost:4900/api/health" > /dev/null 2>&1; then
+              echo "✓ API is healthy!"
               exit 0
             fi
-            echo "  Attempt $i/60 - not ready yet, waiting..."
+            echo "  Attempt $i/60 - API not ready yet, waiting..."
             sleep 2
           done
           
