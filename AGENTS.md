@@ -72,9 +72,20 @@ Before starting any work, run through `KICKOFF.md` to:
 Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification:
 
 ```bash
-# Ensure the frontend is running on localhost:4901
+# Local environment (default) - ensure frontend is running
 python tools/screenshot.py
-# Output: dashboard_screenshot.png
+# Output: screenshots/dashboard_local_YYYYMMDD_HHMMSS.png
+
+# Staging environment
+python tools/screenshot.py --env staging
+# Output: screenshots/dashboard_staging_YYYYMMDD_HHMMSS.png
+
+# Production environment
+python tools/screenshot.py --env prod
+# Output: screenshots/dashboard_prod_YYYYMMDD_HHMMSS.png
+
+# Custom URL
+python tools/screenshot.py --url http://localhost:4902
 ```
 
-Use this after making UI changes to verify the visual result.
+Screenshots are saved to the `screenshots/` directory (gitignored). Use this after making UI changes to verify the visual result.
