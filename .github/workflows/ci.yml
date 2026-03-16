@@ -291,6 +291,10 @@ jobs:
               echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
               docker compose pull
               docker compose up -d
+              echo "=== Container Status ==="
+              docker compose ps
+              echo "=== API Logs (last 50 lines) ==="
+              docker compose logs api --tail 50 || true
               docker logout ghcr.io
               docker system prune -f
           EOF
@@ -319,4 +323,8 @@ jobs:
           done
           
           echo "✗ Health check failed after 60 attempts"
+          echo "=== Container Status ==="
+          ssh $USER@$HOST "cd \$(dirname \$(find /home -name 'docker-compose.yml' 2>/dev/null | head -1)) && docker compose ps" || true
+          echo "=== API Container Logs ==="
+          ssh $USER@$HOST "cd \$(dirname \$(find /home -name 'docker-compose.yml' 2>/dev/null | head -1)) && docker compose logs api --tail 100" || true
           exit 1
