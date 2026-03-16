@@ -29,10 +29,18 @@ down:
 	docker compose down
 
 migrate:
-	docker compose exec -T postgres psql -U pacifica -d pacifica -f /migrations/001_tables.sql || true
+	@for file in api/migrations/*.sql; do \
+		echo "Running migration: $$file"; \
+		cat $$file | docker compose exec -T postgres psql -U pacifica -d pacifica || exit 1; \
+	done
+	@echo "All migrations completed."
 
 seed:
-	docker compose exec -T postgres psql -U pacifica -d pacifica -f /seed/001_locations.sql || true
+	@for file in api/seed/*.sql; do \
+		echo "Running seed: $$file"; \
+		cat $$file | docker compose exec -T postgres psql -U pacifica -d pacifica || exit 1; \
+	done
+	@echo "All seed data loaded."
 
 logs:
 	docker compose logs -f
