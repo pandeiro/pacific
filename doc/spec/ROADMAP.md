@@ -19,8 +19,8 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 2. Slice A — Tides & Sun
 - [ ] **Card 10: NOAA Tides Scraper**
 - [ ] **Card 11: Tides API Endpoint**
-- [ ] **Card 12: Tides & Sun Frontend Tile**
-- [ ] **Card 13: Sun Events Scraper**
+- [ ] **Card 12: Tides Frontend Tile** — Visual tide curve, next high/low predictions, location dropdown
+- [ ] **Card 13: Sun Events Scraper + Sun Tile** — Scraper for sunrise/sunset data + compact Sun tile with location dropdown
 
 ## 3. Slice B — Conditions
 - [ ] **Card 14: NOAA Water Temp Scraper**

@@ -1,9 +1,11 @@
 import { useTides } from '../../hooks/useTides';
-import './TidesSunTile.css';
+import { useLocations } from '../../hooks/useLocations';
+import './TidesTile.css';
 
-interface TidesSunTileProps {
+interface TidesTileProps {
   locationId: number;
   stationId: string;
+  onLocationChange: (locationId: number, stationId: string) => void;
 }
 
 function formatTime(isoString: string): string {
@@ -11,40 +13,35 @@ function formatTime(isoString: string): string {
   return date.toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
-    hour12: true 
+    hour12: true,
+    timeZone: 'America/Los_Angeles'
   }).toLowerCase();
 }
 
 function generateTideCurvePath(events: Array<{ timestamp: string; height_ft: number }>, width: number, height: number): string {
   if (events.length === 0) return '';
   
-  // Sort events by timestamp
   const sortedEvents = [...events].sort((a, b) => 
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
   
-  // Find min and max heights for scaling
   const heights = sortedEvents.map(e => e.height_ft);
   const minHeight = Math.min(...heights);
   const maxHeight = Math.max(...heights);
   const heightRange = maxHeight - minHeight || 1;
   
-  // Time range
   const startTime = new Date(sortedEvents[0].timestamp).getTime();
   const endTime = new Date(sortedEvents[sortedEvents.length - 1].timestamp).getTime();
   const timeRange = endTime - startTime || 1;
   
-  // Generate points
   const points = sortedEvents.map(event => {
     const time = new Date(event.timestamp).getTime();
     const x = ((time - startTime) / timeRange) * width;
-    // Invert Y because SVG Y=0 is at top
     const normalizedHeight = (event.height_ft - minHeight) / heightRange;
-    const y = height - (normalizedHeight * (height - 20) + 10); // Leave padding
+    const y = height - (normalizedHeight * (height - 20) + 10);
     return { x, y };
   });
   
-  // Create smooth curve using Catmull-Rom spline converted to cubic bezier
   if (points.length < 2) return '';
   
   let path = `M ${points[0].x},${points[0].y}`;
@@ -90,19 +87,23 @@ function getCurrentPosition(events: Array<{ timestamp: string; height_ft: number
   return { x, y };
 }
 
-export function TidesSunTile({ locationId, stationId }: TidesSunTileProps) {
-  const { tides, sun, isLoading, error } = useTides(locationId, stationId);
+export function TidesTile({ locationId, stationId, onLocationChange }: TidesTileProps) {
+  const { tides, isLoading, error } = useTides(locationId, stationId);
+  const { locations, isLoading: locationsLoading } = useLocations();
+  
+  // Filter to locations with NOAA station IDs
+  const availableLocations = locations.filter(loc => loc.noaa_station_id);
   
   const width = 300;
   const height = 80;
   
-  if (isLoading) {
+  if (isLoading || locationsLoading) {
     return (
-      <div className="tile tides-sun" data-testid="tides-tile">
+      <div className="tile tides-tile" data-testid="tides-tile">
         <div className="tile__header">
           <div className="tile__title">
-            <span className="tile__title-icon">🌙</span>
-            Tides & Sun
+            <span className="tile__title-icon">🌊</span>
+            Tides
           </div>
         </div>
         <div className="tile__content" data-testid="tile-loading">
@@ -114,11 +115,11 @@ export function TidesSunTile({ locationId, stationId }: TidesSunTileProps) {
   
   if (error) {
     return (
-      <div className="tile tides-sun tile--error" data-testid="tides-tile">
+      <div className="tile tides-tile tile--error" data-testid="tides-tile">
         <div className="tile__header">
           <div className="tile__title">
-            <span className="tile__title-icon">🌙</span>
-            Tides & Sun
+            <span className="tile__title-icon">🌊</span>
+            Tides
           </div>
         </div>
         <div className="tile__content" data-testid="tile-error">
@@ -133,18 +134,34 @@ export function TidesSunTile({ locationId, stationId }: TidesSunTileProps) {
     ? getCurrentPosition(tides.events, width, height, tides.current_height_ft)
     : null;
   
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLocationId = Number(e.target.value);
+    const location = availableLocations.find(loc => loc.id === newLocationId);
+    if (location && location.noaa_station_id) {
+      onLocationChange(newLocationId, location.noaa_station_id);
+    }
+  };
+  
   return (
-    <div className="tile tides-sun" data-testid="tides-tile">
+    <div className="tile tides-tile" data-testid="tides-tile">
       <div className="tile__header">
         <div className="tile__title">
-          <span className="tile__title-icon">🌙</span>
-          Tides & Sun
+          <span className="tile__title-icon">🌊</span>
+          Tides
         </div>
-        <div className="tile__location">{tides?.location_name || 'Unknown'}</div>
+        <select 
+          className="tides-tile__location-select"
+          value={locationId}
+          onChange={handleLocationChange}
+        >
+          {availableLocations.map(loc => (
+            <option key={loc.id} value={loc.id}>{loc.name}</option>
+          ))}
+        </select>
       </div>
       
       <div className="tile__content">
-        <div className="tides-sun__chart">
+        <div className="tides-tile__chart">
           <div className="tide-curve" data-testid="tides-curve">
             <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
               {curvePath && (
@@ -164,7 +181,7 @@ export function TidesSunTile({ locationId, stationId }: TidesSunTileProps) {
           </div>
         </div>
         
-        <div className="tides-sun__info">
+        <div className="tides-tile__info">
           {tides?.next_low && (
             <div className="tide-info" data-testid="next-low">
               <span className="tide-info__label">Next Low</span>
@@ -180,28 +197,6 @@ export function TidesSunTile({ locationId, stationId }: TidesSunTileProps) {
             </div>
           )}
         </div>
-        
-        {sun && (
-          <div className="sun-info">
-            <div className="sun-info__item" data-testid="sunrise">
-              <span className="sun-info__icon">🌅</span>
-              <span className="sun-info__label">Sunrise</span>
-              <span className="sun-info__time">{formatTime(sun.sunrise)}</span>
-            </div>
-            <div className="sun-info__item" data-testid="sunset">
-              <span className="sun-info__icon">🌇</span>
-              <span className="sun-info__label">Sunset</span>
-              <span className="sun-info__time">{formatTime(sun.sunset)}</span>
-            </div>
-            <div className="sun-info__item" data-testid="golden-hour">
-              <span className="sun-info__icon">✨</span>
-              <span className="sun-info__label">Golden Hour</span>
-              <span className="sun-info__time">
-                {formatTime(sun.golden_hour_evening_start)} – {formatTime(sun.golden_hour_evening_end)}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

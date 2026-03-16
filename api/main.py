@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from logging_config import configure_logging, get_logger
 from routes.tides import router as tides_router
+from routes.locations import router as locations_router
 
 # Configure logging on startup
 configure_logging()
@@ -25,6 +26,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(tides_router)
+app.include_router(locations_router)
 
 
 @app.get("/api/health")

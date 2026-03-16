@@ -1,0 +1,63 @@
+.sun-tile {
+  min-height: 100px;
+}
+
+.sun-tile__location-select {
+  background: rgba(10, 22, 40, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+.sun-tile__location-select:focus {
+  outline: none;
+  border-color: var(--teal-glow);
+}
+
+.sun-tile__info {
+  display: flex;
+  justify-content: space-around;
+  padding: 0.75rem 0.5rem;
+  background: rgba(10, 22, 40, 0.5);
+  border-radius: 8px;
+}
+
+.sun-tile__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sun-tile__icon {
+  font-size: 1.25rem;
+}
+
+.sun-tile__label {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sun-tile__time {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sun-tile__no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

@@ -45,7 +45,11 @@ Information-dense, tiled interface. Each tile answers a specific question (e.g.,
 - **Activity Scores**: 0–100 scores for Snorkeling, Whale Watching, Tidepooling, etc.
 - **Live Cams**: Switchable feeds from coastal locations.
 - **Wildlife Intel**: Recent sightings feed.
-- **Tides & Sun**: Visual tide curve and solar events.
+- **Sun**: Sunrise/sunset times with location selector (positioned prominently at top-right).
+- **Tides**: Visual tide curve with next high/low predictions.
+
+### Default Location
+All location-selectable tiles default to **Santa Monica** (the closest location to the primary development team).
 
 ## 7. Engineering Standards
 - **Testing**: Mandatory Vitest (frontend) and pytest (backend) coverage. Scrapers must use VCR recordings for reproducible tests.

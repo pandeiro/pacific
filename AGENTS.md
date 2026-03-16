@@ -35,6 +35,9 @@ The `doc/progress/SUMMARY.md` file uses a simple format:
 ### Voice Profile
 All generated content should read like a **passionate, knowledgeable local**—the person at the dive shop who always knows where the action is. Be practical, opinionated, and use local vernacular.
 
+### UI Conventions
+- **Default Location**: When a location dropdown is used in any tile or component, default to **Santa Monica** (the closest location to the primary development team).
+
 ### Code Standards
 - **TypeScript**: Strict mode, no `any` without explicit justification
 - **Python**: MyPy type checking, Ruff for linting
