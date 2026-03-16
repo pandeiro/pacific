@@ -19,3 +19,4 @@ Last line = most recent work. Each line = one completed work item.
 [11] Tides & Sun Frontend Tile: Implemented D3.js tide curve visualization with pulsing current-position dot, NextTides and SunEvents components, integrated with useTides hook for API and WebSocket updates
 [12] Sun Events Scraper: Implemented sunrise-sunset.org scraper fetching sunrise, sunset, and golden hour data for 7 locations × 8 days, with polite rate limiting and error handling
 README and CI/CD improvements: Added build badge, removed live site link and Voice section, added scrapers data sources section, added 20s initialization pause to GHA healthcheck
+Seed data improvement: Refactored sun_events seed to use dynamic subqueries for location ID lookup instead of brittle hardcoded IDs
