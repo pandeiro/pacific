@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: pacifica
       POSTGRES_USER: pacifica
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -24,11 +24,12 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    image: ghcr.io/pandeiro/pacifica-api:${IMAGE_TAG:-local}
     container_name: pacifica-api
     environment:
-      DATABASE_URL: postgresql+asyncpg://pacifica:password@postgres:5432/pacifica
-      ENVIRONMENT: development
-      LOG_FORMAT: pretty
+      DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD:-password}@postgres:5432/pacifica
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_FORMAT: ${LOG_FORMAT:-pretty}
     ports:
       - "4900:4900"
     networks:
@@ -43,13 +44,11 @@ services:
     build:
       context: .
       dockerfile: scraper/Dockerfile
+    image: ghcr.io/pandeiro/pacifica-scraper:${IMAGE_TAG:-local}
     container_name: pacifica-scraper
     environment:
-      DATABASE_URL: postgresql+asyncpg://pacifica:password@postgres:5432/pacifica
-      ENVIRONMENT: development
-    volumes:
-      - ./scraper:/app/scraper
-      - ./api:/app/api
+      DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD:-password}@postgres:5432/pacifica
+      ENVIRONMENT: ${ENVIRONMENT:-development}
     networks:
       - pacifica
     depends_on:

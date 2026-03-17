@@ -212,81 +212,22 @@ jobs:
           
           # Deploy backend (production only - staging shares the same API)
           if [ "$IS_PROD" = true ]; then
-            # Create complete docker-compose.yml with postgres, api, and scraper
-            cat > docker-compose.yml << 'COMPOSE'
-          services:
-            postgres:
-              image: timescale/timescaledb:latest-pg16
-              container_name: pacifica-postgres
-              environment:
-                POSTGRES_DB: pacifica
-                POSTGRES_USER: pacifica
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-              volumes:
-                - postgres_data:/var/lib/postgresql/data
-              networks:
-                - pacifica
-              healthcheck:
-                test: ["CMD-SHELL", "pg_isready -U pacifica -d pacifica"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-              restart: unless-stopped
-          
-            api:
-              image: ghcr.io/${{ github.repository }}-api:latest
-              container_name: pacifica-api
-              labels:
-                logging: enabled
-              environment:
-                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
-                ENVIRONMENT: production
-                LOG_FORMAT: json
-              ports:
-                - "127.0.0.1:4900:4900"
-              networks:
-                - pacifica
-              depends_on:
-                postgres:
-                  condition: service_healthy
-              healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost:4900/api/health"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-                start_period: 40s
-              restart: unless-stopped
-          
-            scraper:
-              image: ghcr.io/${{ github.repository }}-scraper:latest
-              container_name: pacifica-scraper
-              labels:
-                logging: enabled
-              environment:
-                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
-                ENVIRONMENT: production
-              networks:
-                - pacifica
-              depends_on:
-                postgres:
-                  condition: service_healthy
-              restart: unless-stopped
-          
-          volumes:
-            postgres_data:
-          
-          networks:
-            pacifica:
-              driver: bridge
-          COMPOSE
-            
-            # Copy compose file to VPS (migrations and seed are baked into the API image)
+            # Copy compose file from repo to VPS
             scp docker-compose.yml $USER@$HOST:$SERVICES_PATH/docker-compose.yml
             
             # Deploy containers with GHCR authentication
             ssh $USER@$HOST << EOF
               set -e
               cd $SERVICES_PATH
+              
+              # Create .env file for production
+              cat > .env << ENVFILE
+          IMAGE_TAG=latest
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          ENVIRONMENT=production
+          LOG_FORMAT=json
+          ENVFILE
+              
               echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
               docker compose pull
               docker compose up -d
