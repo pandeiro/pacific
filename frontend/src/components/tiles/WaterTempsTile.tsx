@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useWaterTemp } from '../../hooks/useWaterTemp';
 import './WaterTempsTile.css';
 
@@ -7,15 +8,13 @@ interface WaterTempsTileProps {
 
 export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
   const { data, isLoading, error } = useWaterTemp(locationId);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (isLoading) {
     return (
       <div className="tile water-temps" data-testid="water-temps-tile">
         <div className="tile__header">
-          <div className="tile__title">
-            <span className="tile__title-icon">🌡️</span>
-            Water Temp
-          </div>
+          <div className="tile__title">Water Temp</div>
         </div>
         <div className="tile__content" data-testid="tile-loading">
           <div className="loading-state">Loading...</div>
@@ -28,10 +27,7 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
     return (
       <div className="tile water-temps tile--error" data-testid="water-temps-tile">
         <div className="tile__header">
-          <div className="tile__title">
-            <span className="tile__title-icon">🌡️</span>
-            Water Temp
-          </div>
+          <div className="tile__title">Water Temp</div>
         </div>
         <div className="tile__content" data-testid="tile-error">
           <div className="error-state">Data unavailable</div>
@@ -57,13 +53,20 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
     return src;
   };
 
+  // Format time for hover display
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Los_Angeles'
+    }).toLowerCase();
+  };
+
   return (
     <div className="tile water-temps" data-testid="water-temps-tile">
       <div className="tile__header">
-        <div className="tile__title">
-          <span className="tile__title-icon">🌡️</span>
-          Water Temp
-        </div>
+        <div className="tile__title">Water Temp</div>
       </div>
       
       <div className="tile__content">
@@ -86,18 +89,26 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
         </div>
 
         {sparklineData.length > 0 && (
-          <div className="water-temps__sparkline">
-            {sparklineData.map((reading, i) => {
-              const height = ((reading.temperature_f - minTemp) / tempRange) * 100;
-              return (
-                <div
-                  key={i}
-                  className="water-temps__sparkline-bar"
-                  style={{ height: `${Math.max(height, 10)}%` }}
-                  title={`${reading.temperature_f.toFixed(1)}°F at ${new Date(reading.timestamp).toLocaleString()}`}
-                />
-              );
-            })}
+          <div className="water-temps__sparkline-container">
+            <div className="water-temps__sparkline">
+              {sparklineData.map((reading, i) => {
+                const height = ((reading.temperature_f - minTemp) / tempRange) * 100;
+                return (
+                  <div
+                    key={i}
+                    className="water-temps__sparkline-bar"
+                    style={{ height: `${Math.max(height, 10)}%` }}
+                    onMouseEnter={() => setHoveredIndex(i)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  />
+                );
+              })}
+            </div>
+            {hoveredIndex !== null && (
+              <div className="water-temps__sparkline-value">
+                {sparklineData[hoveredIndex].temperature_f.toFixed(1)}°F at {formatTime(sparklineData[hoveredIndex].timestamp)}
+              </div>
+            )}
           </div>
         )}
 
