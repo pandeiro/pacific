@@ -29,6 +29,9 @@ export function Dashboard() {
     ['dana_point', 'la_jolla', 'santa_monica', 'santa_barbara', 'morro_bay', 'shaws_cove', 'zuma_beach'].includes(loc.slug)
   );
   
+  // Get current location for station info
+  const currentLocation = locations.find(loc => loc.id === locationId);
+  
   return (
     <div className="dashboard">
       <div className="dashboard__main">
@@ -55,6 +58,16 @@ export function Dashboard() {
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
               ))}
             </select>
+            {currentLocation?.station_info && (
+              <div className="location-selector__station-info">
+                Tides: {currentLocation.station_info.name}
+                {currentLocation.station_info.distance_miles > 0 && (
+                  <span className="station-info__distance">
+                    {' '}({currentLocation.station_info.distance_miles} mi {currentLocation.station_info.direction})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <SunTile locationId={locationId} />
           <WaterTempsTile locationId={locationId} />
