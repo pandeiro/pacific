@@ -27,6 +27,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 15: South Coast Divers Scraper**
 - [ ] **Card 16: Conditions API Endpoint** — Water temperature only (NOAA data), latest + historical data per location
 - [ ] **Card 17: Conditions Frontend Tile**
+- [ ] **Card 17b: Tides Tile Bug Fix & Interpolation** — See `doc/ref/card_17b_tides_fix.md`
 
 ## 4. Slice C — Wildlife Sightings
 - [ ] **Card 18: iNaturalist Scraper**
