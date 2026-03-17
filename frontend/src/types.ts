@@ -90,3 +90,23 @@ export interface SunEventsResponse {
   golden_hour_evening_start: string;
   golden_hour_evening_end: string;
 }
+
+export interface WaterTemperatureReading {
+  timestamp: string;
+  temperature_f: number;
+  source: string;
+  source_url: string | null;
+}
+
+export interface WaterTemperatureResponse {
+  location_id: number;
+  location_name: string;
+  current_temp_f: number | null;
+  current_temp_c: number | null;
+  source: string | null;
+  source_url: string | null;
+  last_updated: string | null;
+  history: WaterTemperatureReading[];
+  hours_requested: number;
+  readings_count: number;
+}

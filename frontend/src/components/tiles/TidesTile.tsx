@@ -1,11 +1,9 @@
 import { useTides } from '../../hooks/useTides';
-import { useLocations } from '../../hooks/useLocations';
 import './TidesTile.css';
 
 interface TidesTileProps {
   locationId: number;
   stationId: string;
-  onLocationChange: (locationId: number, stationId: string) => void;
 }
 
 function formatTime(isoString: string): string {
@@ -87,17 +85,13 @@ function getCurrentPosition(events: Array<{ timestamp: string; height_ft: number
   return { x, y };
 }
 
-export function TidesTile({ locationId, stationId, onLocationChange }: TidesTileProps) {
+export function TidesTile({ locationId, stationId }: TidesTileProps) {
   const { tides, isLoading, error } = useTides(locationId, stationId);
-  const { locations, isLoading: locationsLoading } = useLocations();
-  
-  // Filter to locations with NOAA station IDs
-  const availableLocations = locations.filter(loc => loc.noaa_station_id);
   
   const width = 300;
   const height = 80;
   
-  if (isLoading || locationsLoading) {
+  if (isLoading) {
     return (
       <div className="tile tides-tile" data-testid="tides-tile">
         <div className="tile__header">
@@ -134,14 +128,6 @@ export function TidesTile({ locationId, stationId, onLocationChange }: TidesTile
     ? getCurrentPosition(tides.events, width, height, tides.current_height_ft)
     : null;
   
-  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLocationId = Number(e.target.value);
-    const location = availableLocations.find(loc => loc.id === newLocationId);
-    if (location && location.noaa_station_id) {
-      onLocationChange(newLocationId, location.noaa_station_id);
-    }
-  };
-  
   return (
     <div className="tile tides-tile" data-testid="tides-tile">
       <div className="tile__header">
@@ -149,15 +135,6 @@ export function TidesTile({ locationId, stationId, onLocationChange }: TidesTile
           <span className="tile__title-icon">🌊</span>
           Tides
         </div>
-        <select 
-          className="tides-tile__location-select"
-          value={locationId}
-          onChange={handleLocationChange}
-        >
-          {availableLocations.map(loc => (
-            <option key={loc.id} value={loc.id}>{loc.name}</option>
-          ))}
-        </select>
       </div>
       
       <div className="tile__content">

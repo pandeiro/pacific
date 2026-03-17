@@ -1,0 +1,96 @@
+.water-temps {
+  min-height: 140px;
+}
+
+.water-temps__display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.water-temps__current {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.water-temps__value {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.water-temps__unit {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.water-temps__secondary {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.water-temps__no-data {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-muted);
+  padding: 1rem 0;
+}
+
+.water-temps__sparkline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 32px;
+  margin: 0.75rem 0 0.5rem;
+  padding: 0 0.25rem;
+  gap: 1px;
+}
+
+.water-temps__sparkline-bar {
+  flex: 1;
+  min-width: 2px;
+  background: linear-gradient(to top, var(--ocean-mid), var(--ocean-shallow));
+  border-radius: 1px 1px 0 0;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.water-temps__sparkline-bar:hover {
+  opacity: 1;
+  background: var(--ocean-shallow);
+}
+
+.water-temps__source {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.tile--error .loading-state,
+.tile--error .error-state {
+  color: var(--score-fair);
+}
