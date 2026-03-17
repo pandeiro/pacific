@@ -176,6 +176,8 @@ tag; let the API and UI surface the data uniformly.
 
 This is a prerequisite for Cards 18b, 19, and 23. Build it first.
 
+**See `doc/ref/llm_prompts.md` for prompt engineering findings and best practices.**
+
 ### `scraper/llm.py`
 
 ```python
@@ -192,28 +194,35 @@ class LLMClient:
     async def extract(
         self,
         raw_text: str,
-        schema: dict,
+        system_prompt: str | None = None,
+        user_prompt: str | None = None,
         fallback_fn: Callable[[str], dict] | None = None,
-    ) -> dict:
+    )    -> dict:
         """
         POST to {base_url}/v1/chat/completions (OpenAI-compat format).
+        Uses temperature=0.0 for consistent output.
         On any failure: call fallback_fn(raw_text) if provided, else return {}.
         raw_text is always preserved by the caller in the sightings.raw_text column.
         """
         ...
 ```
 
+### Key Implementation Notes
+
+1. **Temperature 0.0** - Use `temperature: 0.0` for deterministic, repeatable output
+2. **Simple prompts** - Inline format descriptions work better than complex JSON schemas
+3. **System message** - Short system message "Return only valid JSON." is sufficient
+4. **Docker networking** - Use `http://host.docker.internal:11434` to reach host Ollama
+
 ### Env vars (add to `.env.example`)
 
 ```
 # LLM extraction service (local Ollama, OpenAI-compatible)
-# OLLAMA_API_URL=http://localhost:11434
+# OLLAMA_API_URL=http://host.docker.internal:11434  # Use host.docker.internal in Docker
 # LLM_MODEL=llama3.2:1b
 ```
 
-Note: `OLLAMA_API_URL` replaces the earlier `LLM_SERVICE_URL` stub in `.env.example`.
-
-### Sightings extraction schema
+### Default extraction schema
 
 ```python
 SIGHTINGS_SCHEMA = {
@@ -231,6 +240,9 @@ SIGHTINGS_SCHEMA = {
                 },
                 "required": ["species"]
             }
+        }
+    }
+}
         }
     }
 }

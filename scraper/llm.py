@@ -2,13 +2,16 @@
 
 Thin async wrapper around an OpenAI-compatible chat completions API.
 Defaults to local Ollama. Falls back to regex heuristics on failure.
+
+See doc/ref/llm_prompts.md for prompt engineering findings.
 """
 
+import json
 import os
+import re
 from typing import Callable
 
 import httpx
-
 
 SIGHTINGS_SCHEMA = {
     "type": "object",
@@ -28,6 +31,11 @@ SIGHTINGS_SCHEMA = {
         }
     },
 }
+
+DEFAULT_SYSTEM_PROMPT = "Return only valid JSON."
+DEFAULT_USER_PROMPT = """Extract wildlife sightings. Return JSON with "sightings" array containing objects with "species" (string) and "count" (integer) fields.
+
+{text}"""
 
 
 class LLMClient:
@@ -59,28 +67,33 @@ class LLMClient:
     async def extract(
         self,
         raw_text: str,
-        schema: dict,
+        system_prompt: str | None = None,
+        user_prompt: str | None = None,
         fallback_fn: Callable[[str], dict] | None = None,
     ) -> dict:
         """Extract structured data from raw text using LLM.
 
         Args:
             raw_text: The unstructured text to extract from.
-            schema: JSON schema describing the expected output structure.
+            system_prompt: Optional system prompt override.
+            user_prompt: Optional user prompt template (use {text} placeholder).
             fallback_fn: Optional function to call if LLM fails.
 
         Returns:
-            Extracted data matching the schema, or empty dict on failure
+            Extracted data as dict, or empty dict on failure
             (calls fallback_fn if provided).
+
+        Note:
+            See doc/ref/llm_prompts.md for prompt engineering findings.
+            Key findings: Use simple prompts, temperature 0.0, short system
+            message "Return only valid JSON." - this consistently produces
+            raw JSON output without markdown code blocks.
         """
         client = await self._get_client()
 
-        prompt = f"""Extract structured data from the following wildlife sighting report.
-Return ONLY valid JSON matching this schema:
-{schema}
-
-Text to extract from:
-{raw_text}"""
+        system = system_prompt or DEFAULT_SYSTEM_PROMPT
+        user_template = user_prompt or DEFAULT_USER_PROMPT
+        user = user_template.format(text=raw_text)
 
         try:
             response = await client.post(
@@ -88,13 +101,10 @@ Text to extract from:
                 json={
                     "model": self.model,
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a data extraction assistant. Extract structured data and return only valid JSON.",
-                        },
-                        {"role": "user", "content": prompt},
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
                     ],
-                    "temperature": 0.1,
+                    "temperature": 0.0,
                 },
             )
             response.raise_for_status()
@@ -102,9 +112,16 @@ Text to extract from:
 
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-            import json
+            content = content.strip()
 
-            return json.loads(content)
+            json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
+            if json_match:
+                content = json_match.group(1).strip()
+            elif content.startswith("```"):
+                content = re.sub(r"^```(?:json)?\s*", "", content)
+                content = re.sub(r"\s*```$", "", content)
+
+            return json.loads(content.strip())
         except Exception as e:
             print(f"[LLMClient] Extraction failed: {e}")
             if fallback_fn is not None:
