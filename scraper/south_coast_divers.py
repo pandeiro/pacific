@@ -132,7 +132,7 @@ class SouthCoastDiversScraper(BaseScraper):
         target_text = "Here is the latest group post."
         target_element = None
 
-        for element in soup.find_all(text=True):
+        for element in soup.find_all(string=True):
             if target_text in element.strip():
                 target_element = element.parent
                 break
