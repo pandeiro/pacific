@@ -212,14 +212,13 @@ class LLMClient:
 1. **Temperature 0.0** - Use `temperature: 0.0` for deterministic, repeatable output
 2. **Simple prompts** - Inline format descriptions work better than complex JSON schemas
 3. **System message** - Short system message "Return only valid JSON." is sufficient
-4. **Docker networking** - Use `http://host.docker.internal:11434` to reach host Ollama
+4. **Docker networking** - Connects to host Ollama at `http://host.docker.internal:11434`
+5. **Named profiles** - All extraction profiles must be predefined in `PROFILES` dict
 
-### Env vars (add to `.env.example`)
+### Env vars
 
 ```
-# LLM extraction service (local Ollama, OpenAI-compatible)
-# OLLAMA_API_URL=http://host.docker.internal:11434  # Use host.docker.internal in Docker
-# LLM_MODEL=llama3.2:1b
+# LLM_MODEL=llama3.2:1b  # Model to use for extraction
 ```
 
 ### Default extraction schema

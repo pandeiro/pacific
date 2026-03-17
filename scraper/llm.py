@@ -13,38 +13,28 @@ from typing import Callable
 
 import httpx
 
-SIGHTINGS_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "sightings": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "species": {"type": "string"},
-                    "count": {"type": "integer"},
-                    "location_hint": {"type": "string"},
-                    "behavior": {"type": "string"},
-                },
-                "required": ["species"],
-            },
-        }
+PROFILES = {
+    "default": {
+        "system": "Return only valid JSON.",
+        "user_template": 'Extract wildlife sightings. Return JSON with "sightings" array containing objects with "species" (string) and "count" (integer) fields.\n\n{text}',
+        "temperature": 0.0,
+    },
+    "acs-la": {
+        "system": "Return only valid JSON.",
+        "user_template": 'Extract wildlife sightings from this ACS-LA Gray Whale Census report. Return JSON with "sightings" array. Each object has: "species" (string), "count" (integer), "location_hint" (string, optional), "behavior" (string, optional). Include zero counts if explicitly stated.\n\n{text}',
+        "temperature": 0.0,
     },
 }
 
-DEFAULT_SYSTEM_PROMPT = "Return only valid JSON."
-DEFAULT_USER_PROMPT = """Extract wildlife sightings. Return JSON with "sightings" array containing objects with "species" (string) and "count" (integer) fields.
-
-{text}"""
-
 
 class LLMClient:
-    """Async wrapper around OpenAI-compatible chat completions API."""
+    """Async wrapper around OpenAI-compatible chat completions API.
 
-    def __init__(self, base_url: str | None = None, model: str | None = None):
-        self.base_url = base_url or os.getenv(
-            "OLLAMA_API_URL", "http://localhost:11434"
-        )
+    Connects to Ollama running on the Docker host at host.docker.internal:11434.
+    """
+
+    def __init__(self, model: str | None = None):
+        self.base_url = "http://host.docker.internal:11434"
         self.model = model or os.getenv("LLM_MODEL", "llama3.2:1b")
         self._client: httpx.AsyncClient | None = None
 
@@ -67,33 +57,39 @@ class LLMClient:
     async def extract(
         self,
         raw_text: str,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
+        profile: str = "default",
         fallback_fn: Callable[[str], dict] | None = None,
     ) -> dict:
         """Extract structured data from raw text using LLM.
 
         Args:
             raw_text: The unstructured text to extract from.
-            system_prompt: Optional system prompt override.
-            user_prompt: Optional user prompt template (use {text} placeholder).
+            profile: Named extraction profile (must exist in PROFILES).
             fallback_fn: Optional function to call if LLM fails.
 
         Returns:
             Extracted data as dict, or empty dict on failure
             (calls fallback_fn if provided).
 
+        Raises:
+            KeyError: If profile does not exist in PROFILES.
+
         Note:
             See doc/ref/llm_prompts.md for prompt engineering findings.
-            Key findings: Use simple prompts, temperature 0.0, short system
-            message "Return only valid JSON." - this consistently produces
-            raw JSON output without markdown code blocks.
+            All profiles must be predefined in PROFILES dict.
         """
+        if profile not in PROFILES:
+            raise KeyError(
+                f"Unknown extraction profile: {profile!r}. "
+                f"Available profiles: {list(PROFILES.keys())}"
+            )
+
+        config = PROFILES[profile]
         client = await self._get_client()
 
-        system = system_prompt or DEFAULT_SYSTEM_PROMPT
-        user_template = user_prompt or DEFAULT_USER_PROMPT
-        user = user_template.format(text=raw_text)
+        system = config["system"]
+        user = config["user_template"].format(text=raw_text)
+        temperature = config.get("temperature", 0.0)
 
         try:
             response = await client.post(
@@ -104,7 +100,7 @@ class LLMClient:
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},
                     ],
-                    "temperature": 0.0,
+                    "temperature": temperature,
                 },
             )
             response.raise_for_status()
@@ -123,7 +119,7 @@ class LLMClient:
 
             return json.loads(content.strip())
         except Exception as e:
-            print(f"[LLMClient] Extraction failed: {e}")
+            print(f"[LLMClient] Extraction failed (profile={profile}): {e}")
             if fallback_fn is not None:
                 try:
                     return fallback_fn(raw_text)
