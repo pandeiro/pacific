@@ -191,6 +191,7 @@ jobs:
           SERVICES_PATH: ${{ secrets.DEPLOY_SERVICES_PATH }}
           STATIC_PATH_PROD: ${{ secrets.DEPLOY_STATIC_PATH_PROD }}
           STATIC_PATH_STAGING: ${{ secrets.DEPLOY_STATIC_PATH_STAGING }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         run: |
@@ -212,32 +213,21 @@ jobs:
           
           # Deploy backend (production only - staging shares the same API)
           if [ "$IS_PROD" = true ]; then
-            # Copy compose file from repo to VPS
+            # Create .env file locally
+            echo "IMAGE_TAG=latest" > .env
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> .env
+            echo "ENVIRONMENT=production" >> .env
+            echo "LOG_FORMAT=json" >> .env
+            
+            # Ensure directory exists and has proper permissions
+            ssh $USER@$HOST "mkdir -p $SERVICES_PATH && chmod 755 $SERVICES_PATH"
+            
+            # Copy files to VPS
+            scp .env $USER@$HOST:$SERVICES_PATH/.env
             scp docker-compose.yml $USER@$HOST:$SERVICES_PATH/docker-compose.yml
             
-            # Deploy containers with GHCR authentication
-            ssh $USER@$HOST << EOF
-              set -e
-              cd $SERVICES_PATH
-              
-              # Create .env file for production
-              cat > .env << ENVFILE
-          IMAGE_TAG=latest
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          ENVIRONMENT=production
-          LOG_FORMAT=json
-          ENVFILE
-              
-              echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
-              docker compose pull
-              docker compose up -d
-              echo "=== Container Status ==="
-              docker compose ps
-              echo "=== API Logs (last 50 lines) ==="
-              docker compose logs api --tail 50 || true
-              docker logout ghcr.io
-              docker system prune -f
-          EOF
+            # Deploy containers
+            ssh $USER@$HOST "cd $SERVICES_PATH && echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin && docker compose pull && docker compose down && docker compose up -d && echo '=== Container Status ===' && docker compose ps && echo '=== API Logs (last 50 lines) ===' && docker compose logs api --tail 50 || true && docker logout ghcr.io && docker system prune -f"
           fi
 
       - name: Health check
