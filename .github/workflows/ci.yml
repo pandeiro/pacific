@@ -150,7 +150,8 @@ jobs:
       - name: Build and push Scraper image
         uses: docker/build-push-action@v5
         with:
-          context: ./scraper
+          context: .
+          file: ./scraper/Dockerfile
           push: true
           tags: ${{ steps.meta-scraper.outputs.tags }}
           labels: ${{ steps.meta-scraper.outputs.labels }}
