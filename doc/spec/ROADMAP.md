@@ -11,10 +11,10 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 03: Database Schema Migrations** — All table definitions, TimescaleDB hypertables
 - [x] **Card 04: Scraper Base Class** — BaseScraper abstract class, retry logic, LLM extraction
 - [x] **Card 05: APScheduler Wiring** — Scheduler setup in scraper container, auto-discovery of scrapers, cron scheduling
-- [ ] **Card 06: WebSocket Protocol** — Connection manager, message types, client hook
-- [ ] **Card 07: Activity Score Formulas** — Scoring algorithms for all activities
-- [ ] **Card 08: Data Retention & TTL** — TimescaleDB retention/compression policies
-- [ ] **Card 09: Testing Infrastructure** — pytest, Vitest, agent-browser setup
+- ~~[ ] **Card 06: WebSocket Protocol**~~ — Skipped for now
+- ~~[ ] **Card 07: Activity Score Formulas**~~ — Skipped for now
+- ~~[ ] **Card 08: Data Retention & TTL**~~ — Skipped for now
+- ~~[ ] **Card 09: Testing Infrastructure**~~ — Skipped for now
 
 ## 2. Slice A — Tides & Sun
 - [x] **Card 10: NOAA Tides Scraper** — Fetches tide data from NOAA CO-OPS API, persists to DB
@@ -25,9 +25,10 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 3. Slice B — Conditions
 - [x] **Card 14: NOAA Water Temp Scraper**
 - [x] **Card 15: South Coast Divers Scraper**
-- [ ] **Card 16: Conditions API Endpoint** — Water temperature only (NOAA data), latest + historical data per location
-- [ ] **Card 17: Conditions Frontend Tile**
-- [ ] **Card 17b: Tides Tile Bug Fix & Interpolation** — See `doc/ref/card_17b_tides_fix.md`
+- [x] **Card 16: Conditions API Endpoint** — Water temperature only (NOAA data), latest + historical data per location
+- [x] **Card 17: WaterTempsTile** — Refactored from ConditionsTile with 7-day sparkline, moved to right column
+- [x] **Card 17b: Tides Tile Bug Fix & Interpolation** — Fixed timezone handling, cosine interpolation, hover tooltips
+- [x] **Card 17c: Station Source Transparency** — Added tide station info below location dropdown
 
 ## 4. Slice C — Wildlife Sightings
 - [ ] **Card 18: iNaturalist Scraper**
