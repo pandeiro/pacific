@@ -90,12 +90,21 @@ async def get_tides(
     )
     tides = tide_result.scalars().all()
 
+    # Deduplicate events by timestamp and type (multiple locations may share the same station)
+    seen = set()
+    unique_tides = []
+    for tide in tides:
+        key = (tide.timestamp, tide.type)
+        if key not in seen:
+            seen.add(key)
+            unique_tides.append(tide)
+
     # Convert to Pydantic models
     events = [
         TideEvent(
             timestamp=tide.timestamp, type=tide.type, height_ft=float(tide.height_ft)
         )
-        for tide in tides
+        for tide in unique_tides
     ]
 
     # Find next low and next high
@@ -110,9 +119,19 @@ async def get_tides(
         .where(Tide.station_id == station_id)
         .where(Tide.timestamp < now)
         .order_by(Tide.timestamp.desc())
-        .limit(2)
     )
-    past_tides = past_result.scalars().all()
+    all_past_tides = past_result.scalars().all()
+
+    # Deduplicate past tides by timestamp and type
+    seen_past = set()
+    past_tides = []
+    for tide in all_past_tides:
+        key = (tide.timestamp, tide.type)
+        if key not in seen_past:
+            seen_past.add(key)
+            past_tides.append(tide)
+        if len(past_tides) >= 2:
+            break
 
     all_events_for_interpolation = [
         TideEvent(
