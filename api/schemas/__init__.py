@@ -47,3 +47,33 @@ class SunEventsResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WaterTemperatureReading(BaseModel):
+    """Single water temperature reading."""
+
+    timestamp: datetime
+    temperature_f: float
+    source: str
+    source_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class WaterTemperatureResponse(BaseModel):
+    """Response model for water temperature endpoint."""
+
+    location_id: int
+    location_name: str
+    current_temp_f: Optional[float] = None
+    current_temp_c: Optional[float] = None
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    last_updated: Optional[datetime] = None
+    history: list[WaterTemperatureReading]
+    hours_requested: int
+    readings_count: int
+
+    class Config:
+        from_attributes = True

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from logging_config import configure_logging, get_logger
 from routes.tides import router as tides_router
 from routes.locations import router as locations_router
+from routes.conditions import router as conditions_router
 
 # Configure logging on startup
 configure_logging()
@@ -27,6 +28,7 @@ app.add_middleware(
 # Include routers
 app.include_router(tides_router)
 app.include_router(locations_router)
+app.include_router(conditions_router)
 
 
 @app.get("/api/health")
@@ -39,12 +41,6 @@ async def health_check():
 async def get_version():
     logger.info("Version endpoint called")
     return {"version": APP_VERSION, "service": "pacifica-api", "api_version": "v1"}
-
-
-@app.get("/api/v1/conditions")
-async def get_conditions():
-    logger.info("Conditions endpoint called")
-    return {"message": "Conditions endpoint - stub implementation"}
 
 
 @app.get("/api/v1/sightings")

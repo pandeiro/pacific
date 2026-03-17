@@ -3,13 +3,13 @@
 This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is a functional unit from database to UI.
 
 ## 0. Infrastructure Setup
-- [ ] **Card 00: Frontend Scaffold** — Initialize React/Vite/TypeScript project, basic tile layout shell
-- [ ] **Card 01: Services & Docker Compose** — Scaffold Python FastAPI app, scraper structure, docker-compose.yml
-- [ ] **Card 02: GitHub Actions** — CI/CD pipeline that builds and deploys to staging/prod
+- [x] **Card 00: Frontend Scaffold** — Initialize React/Vite/TypeScript project, basic tile layout shell
+- [x] **Card 01: Services & Docker Compose** — Scaffold Python FastAPI app, scraper structure, docker-compose.yml
+- [x] **Card 02: GitHub Actions** — CI/CD pipeline that builds and deploys to staging/prod
 
 ## 1. Core Foundation
-- [ ] **Card 03: Database Schema Migrations** — All table definitions, TimescaleDB hypertables
-- [ ] **Card 04: Scraper Base Class** — BaseScraper abstract class, retry logic, LLM extraction
+- [x] **Card 03: Database Schema Migrations** — All table definitions, TimescaleDB hypertables
+- [x] **Card 04: Scraper Base Class** — BaseScraper abstract class, retry logic, LLM extraction
 - [x] **Card 05: APScheduler Wiring** — Scheduler setup in scraper container, auto-discovery of scrapers, cron scheduling
 - [ ] **Card 06: WebSocket Protocol** — Connection manager, message types, client hook
 - [ ] **Card 07: Activity Score Formulas** — Scoring algorithms for all activities
@@ -25,7 +25,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 3. Slice B — Conditions
 - [x] **Card 14: NOAA Water Temp Scraper**
 - [x] **Card 15: South Coast Divers Scraper**
-- [ ] **Card 16: Conditions API Endpoint**
+- [ ] **Card 16: Conditions API Endpoint** — Water temperature only (NOAA data), latest + historical data per location
 - [ ] **Card 17: Conditions Frontend Tile**
 
 ## 4. Slice C — Wildlife Sightings
