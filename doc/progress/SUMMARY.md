@@ -22,3 +22,6 @@ README and CI/CD improvements: Added build badge, removed live site link and Voi
 Seed data improvement: Refactored sun_events seed to use dynamic subqueries for location ID lookup instead of brittle hardcoded IDs
 [05] APScheduler Wiring: Implemented scheduler.py with auto-discovery of scraper classes, APScheduler cron triggers, and container startup execution
 Screenshot tool: Added --env flag for local/staging/prod environments, auto-generated filenames with timestamps, updated AGENTS.md documentation
+[10-13] Tides & Sun Tiles Complete: Split combined tile into separate SunTile (top-right) and TidesTile, added location dropdowns with Santa Monica default, fixed timezone display for Pacific time, implemented scraper DB persistence with dynamic location fetching
+Infrastructure improvements: Unified docker-compose.yml for local/prod, removed postgres port exposure, simplified CI/CD deployment process, fixed POSTGRES_PASSWORD env var handling
+[13] Sun Events Scraper production: Scraper fetching real sunrise/sunset data from sunrise-sunset.org API and persisting to database, SunTile displaying live data with correct Pacific timezone formatting
