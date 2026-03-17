@@ -144,19 +144,38 @@ async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]
     """Insert condition records into the database.
 
     Stores hourly averages of environmental conditions like water temperature.
+    Uses upsert logic to handle duplicate entries gracefully.
     """
     for record in records:
-        condition = Condition(
-            timestamp=record["timestamp"],
-            location_id=record["location_id"],
-            condition_type=record["condition_type"],
-            value=record["value"],
-            unit=record["unit"],
-            source=record.get("source", "noaa"),
-            source_url=record.get("source_url"),
-            raw_text=record.get("raw_text"),
+        # Check if record exists
+        existing = await session.execute(
+            select(Condition).where(
+                Condition.timestamp == record["timestamp"],
+                Condition.location_id == record["location_id"],
+                Condition.condition_type == record["condition_type"],
+            )
         )
-        session.add(condition)
+        existing_condition = existing.scalar_one_or_none()
+
+        if existing_condition:
+            # Update existing record
+            existing_condition.value = record["value"]
+            existing_condition.source = record.get("source", "noaa")
+            existing_condition.source_url = record.get("source_url")
+            existing_condition.raw_text = record.get("raw_text")
+        else:
+            # Create new record
+            condition = Condition(
+                timestamp=record["timestamp"],
+                location_id=record["location_id"],
+                condition_type=record["condition_type"],
+                value=record["value"],
+                unit=record["unit"],
+                source=record.get("source", "noaa"),
+                source_url=record.get("source_url"),
+                raw_text=record.get("raw_text"),
+            )
+            session.add(condition)
 
     await session.flush()
 

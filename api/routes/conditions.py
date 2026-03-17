@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, Location, Condition, NOAAStation
@@ -122,17 +122,19 @@ async def get_water_temperature(
         )
 
     # Query water temperature conditions for the nearest station
+    # Use DISTINCT ON to deduplicate any existing duplicate records
     result = await db.execute(
         select(Condition)
+        .distinct(Condition.timestamp)
         .where(Condition.source == f"noaa_{nearest_station.station_id}")
         .where(Condition.condition_type == "water_temp")
         .where(Condition.timestamp >= start_time)
         .where(Condition.timestamp <= now)
-        .order_by(desc(Condition.timestamp))
+        .order_by(Condition.timestamp, desc(Condition.timestamp))
     )
     conditions = result.scalars().all()
 
-    # Convert to Pydantic models
+    # Convert to Pydantic models and sort by timestamp desc (most recent first)
     history = [
         WaterTemperatureReading(
             timestamp=cond.timestamp,
@@ -142,6 +144,7 @@ async def get_water_temperature(
         )
         for cond in conditions
     ]
+    history.sort(key=lambda x: x.timestamp, reverse=True)
 
     # Get the most recent reading (current temperature)
     current = history[0] if history else None
