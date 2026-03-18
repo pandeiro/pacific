@@ -1,0 +1,77 @@
+.visibility {
+  min-height: 80px;
+}
+
+.visibility__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.visibility__section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.visibility__section--left {
+  padding-right: 8px;
+}
+
+.visibility__section--right {
+  padding-left: 8px;
+}
+
+.visibility__divider {
+  width: 1px;
+  height: 40px;
+  background: var(--color-border, rgba(255, 255, 255, 0.2));
+}
+
+.visibility__label {
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.visibility__value {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.visibility__number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #fff);
+  line-height: 1;
+}
+
+.visibility__unit {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #aaa);
+  font-weight: 500;
+}
+
+.visibility__no-value {
+  font-size: 1.5rem;
+  color: var(--color-text-tertiary, #666);
+}
+
+.visibility__source {
+  font-size: 0.65rem;
+  color: var(--color-text-tertiary, #666);
+  margin-top: 8px;
+  text-align: center;
+}
+
+.visibility__no-data {
+  color: var(--color-text-tertiary, #666);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 8px 0;
+}

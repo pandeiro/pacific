@@ -1,15 +1,13 @@
 """South Coast Divers Scraper - Fetches dive condition reports from southcoastdivers.com."""
 
 import asyncio
-import hashlib
-from datetime import datetime, timedelta, timezone
-from typing import List, Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import List, Any, Optional
 import httpx
 import sys
 import os
 from bs4 import BeautifulSoup
 
-# Add the parent directory to the path so we can import base and db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
@@ -20,8 +18,8 @@ try:
         check_duplicate_dive_report,
         insert_conditions,
     )
+    from llm import LLMClient
 except ImportError:
-    # Fallback for standalone execution
     from scraper.base import BaseScraper
     from scraper.db import (
         get_db_session,
@@ -29,6 +27,7 @@ except ImportError:
         check_duplicate_dive_report,
         insert_conditions,
     )
+    from scraper.llm import LLMClient
 
 
 class SouthCoastDiversScraper(BaseScraper):
@@ -45,17 +44,17 @@ class SouthCoastDiversScraper(BaseScraper):
         """Fetch and process dive condition reports from South Coast Divers website."""
         print(f"[{self.name}] Starting scrape...")
 
-        # Get location ID from database
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(f"[{self.name}] Location '{self.location_slug}' not found in database!")
+            print(
+                f"[{self.name}] Location '{self.location_slug}' not found in database!"
+            )
             return []
 
         print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
 
-        # Fetch the webpage
         try:
             html_content = await self._fetch_page()
             print(f"[{self.name}] Fetched page ({len(html_content)} bytes)")
@@ -63,7 +62,6 @@ class SouthCoastDiversScraper(BaseScraper):
             print(f"[{self.name}] Error fetching page: {e}")
             return []
 
-        # Parse the dive report from HTML
         dive_report_text = self._extract_dive_report(html_content)
 
         if not dive_report_text:
@@ -72,36 +70,144 @@ class SouthCoastDiversScraper(BaseScraper):
 
         print(f"[{self.name}] Extracted dive report ({len(dive_report_text)} chars)")
 
-        # Check for duplicates (same content within last 96 hours)
         async with get_db_session() as session:
             is_duplicate = await check_duplicate_dive_report(
                 session, location.id, dive_report_text, hours=96
             )
 
             if is_duplicate:
-                print(f"[{self.name}] Duplicate report found (within last 96 hours), skipping")
+                print(
+                    f"[{self.name}] Duplicate report found (within last 96 hours), skipping"
+                )
                 return []
 
-        # Create the condition record
         timestamp = datetime.now(timezone.utc)
-        record = {
+        records = []
+
+        dive_report_record = {
             "timestamp": timestamp,
             "location_id": location.id,
             "condition_type": "dive_report",
-            "value": 0,  # Placeholder - report is in raw_text
+            "value": 0,
             "unit": "text",
             "source": "south_coast_divers",
             "source_url": self.url,
             "raw_text": dive_report_text,
         }
+        records.append(dive_report_record)
+        print(f"[{self.name}] Archived dive report text")
 
-        # Persist to database
-        print(f"[{self.name}] Persisting dive report to database...")
+        vis_range = None
+        swell_range = None
+
+        dive_report_id = None
+
+        try:
+            async with LLMClient() as llm_client:
+                conditions_data = await llm_client.extract(
+                    dive_report_text, profile="dive-conditions"
+                )
+                print(f"[{self.name}] LLM extraction: {conditions_data}")
+
+                if conditions_data is None or not isinstance(conditions_data, dict):
+                    print(
+                        f"[{self.name}] ERROR: LLM returned invalid response type: {type(conditions_data)}"
+                    )
+                    print(
+                        f"[{self.name}] Dive report will be archived without extraction"
+                    )
+                elif (
+                    "visibility" not in conditions_data
+                    and "swell" not in conditions_data
+                ):
+                    print(
+                        f"[{self.name}] WARNING: LLM returned empty extraction (no visibility/swell found)"
+                    )
+                    print(f"[{self.name}] Raw response: {conditions_data}")
+                else:
+                    vis_range = conditions_data.get("visibility")
+                    swell_range = conditions_data.get("swell")
+                    dive_report_id = records[0].get("id") if records else None
+
+                    if vis_range and not isinstance(vis_range, (str, int, float)):
+                        print(
+                            f"[{self.name}] ERROR: visibility value has unexpected type: {type(vis_range)}"
+                        )
+                        print(f"[{self.name}] Raw visibility value: {vis_range}")
+                        print(f"[{self.name}] Dive report ID: {dive_report_id}")
+                        vis_range = None
+
+                    if swell_range and not isinstance(swell_range, (str, int, float)):
+                        print(
+                            f"[{self.name}] ERROR: swell value has unexpected type: {type(swell_range)}"
+                        )
+                        print(f"[{self.name}] Raw swell value: {swell_range}")
+                        print(f"[{self.name}] Dive report ID: {dive_report_id}")
+                        swell_range = None
+        except Exception as e:
+            print(f"[{self.name}] ERROR: LLM extraction failed: {e}")
+            print(f"[{self.name}] Dive report will be archived without extraction")
+            if records:
+                dive_report_id = records[0].get("id") if records else None
+                print(f"[{self.name}] Dive report ID: {dive_report_id}")
+
+        def parse_range(value: str) -> tuple:
+            """Parse '10-15' → (10, 15) or '10' → (10, 10)"""
+            if value is None:
+                return None, None
+            value = str(value).strip()
+            if "-" in value:
+                parts = value.split("-")
+                try:
+                    return int(parts[0].strip()), int(parts[1].strip())
+                except (ValueError, IndexError):
+                    return None, None
+            try:
+                v = int(float(value))
+                return v, v
+            except (ValueError, TypeError):
+                return None, None
+
+        if vis_range:
+            vis_min, vis_max = parse_range(vis_range)
+            if vis_min is not None:
+                visibility_record = {
+                    "timestamp": timestamp,
+                    "location_id": location.id,
+                    "condition_type": "visibility",
+                    "value": vis_max,
+                    "unit": "feet",
+                    "source": "south_coast_divers",
+                    "source_url": self.url,
+                    "raw_text": f"Extracted from dive report",
+                    "meta": {"visibility_min": vis_min, "visibility_max": vis_max},
+                }
+                records.append(visibility_record)
+                print(f"[{self.name}] Extracted visibility: {vis_min}-{vis_max} ft")
+
+        if swell_range:
+            swell_min, swell_max = parse_range(swell_range)
+            if swell_min is not None:
+                swell_record = {
+                    "timestamp": timestamp,
+                    "location_id": location.id,
+                    "condition_type": "swell",
+                    "value": swell_max,
+                    "unit": "feet",
+                    "source": "south_coast_divers",
+                    "source_url": self.url,
+                    "raw_text": f"Extracted from dive report",
+                    "meta": {"swell_min": swell_min, "swell_max": swell_max},
+                }
+                records.append(swell_record)
+                print(f"[{self.name}] Extracted swell: {swell_min}-{swell_max} ft")
+
+        print(f"[{self.name}] Persisting {len(records)} records to database...")
         async with get_db_session() as session:
-            await insert_conditions(session, [record])
+            await insert_conditions(session, records)
 
-        print(f"[{self.name}] Successfully persisted dive report")
-        return [record]
+        print(f"[{self.name}] Successfully persisted {len(records)} records")
+        return records
 
     async def _fetch_page(self) -> str:
         """Fetch the South Coast Divers homepage HTML."""
@@ -119,7 +225,9 @@ class SouthCoastDiversScraper(BaseScraper):
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(self.url, headers=headers, follow_redirects=True)
+            response = await client.get(
+                self.url, headers=headers, follow_redirects=True
+            )
             response.raise_for_status()
             return response.text
 
@@ -127,8 +235,6 @@ class SouthCoastDiversScraper(BaseScraper):
         """Extract dive report text from the first table after 'Here is the latest group post.'"""
         soup = BeautifulSoup(html_content, "html.parser")
 
-        # Find the text node containing "Here is the latest group post."
-        # BeautifulSoup doesn't directly search text, so we find all text elements
         target_text = "Here is the latest group post."
         target_element = None
 
@@ -141,16 +247,12 @@ class SouthCoastDiversScraper(BaseScraper):
             print(f"[{self.name}] Could not find target text '{target_text}'")
             return None
 
-        # Find the first table after this element
-        # Navigate up to find a common parent, then find next table
         table = target_element.find_next("table")
 
         if not table:
             print(f"[{self.name}] No table found after target element")
             return None
 
-        # Extract all text from the table, preserving some structure
-        # Get text from all cells, stripping whitespace
         texts = []
         for row in table.find_all("tr"):
             row_texts = []
@@ -162,15 +264,12 @@ class SouthCoastDiversScraper(BaseScraper):
                 texts.append(" | ".join(row_texts))
 
         if not texts:
-            # Fallback: just get all text from the table
             return table.get_text(separator="\n", strip=True)
 
         return "\n".join(texts)
 
 
-# For direct execution
 if __name__ == "__main__":
-    import asyncio
 
     async def main():
         scraper = SouthCoastDiversScraper()

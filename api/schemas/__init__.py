@@ -91,3 +91,20 @@ class WaterTemperatureResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VisibilityResponse(BaseModel):
+    """Response model for water visibility endpoint."""
+
+    location_id: int
+    location_name: str
+    visibility_min: Optional[int] = None
+    visibility_max: Optional[int] = None
+    swell_min: Optional[int] = None
+    swell_max: Optional[int] = None
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    last_updated: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

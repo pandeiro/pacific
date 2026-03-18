@@ -4,6 +4,7 @@ import { MapTile } from './tiles/MapTile';
 import { ActivityScoresTile } from './tiles/ActivityScoresTile';
 import { LiveCamTile } from './tiles/LiveCamTile';
 import { WaterTempsTile } from './tiles/WaterTempsTile';
+import { VisibilityTile } from './tiles/VisibilityTile';
 import { WildlifeIntelTile } from './tiles/WildlifeIntelTile';
 import { SunTile } from './tiles/SunTile';
 import { TidesTile } from './tiles/TidesTile';
@@ -32,23 +33,24 @@ export function Dashboard() {
           <DriveTimesTile />
         </div>
         
-        <div className="dashboard__right">
-          <div className="dashboard__location-selector">
-            <select 
-              className="location-selector__dropdown"
-              value={locationId}
-              onChange={(e) => setLocationId(Number(e.target.value))}
-              disabled={locationsLoading}
-            >
-             {locations.map(loc => (
-                 <option key={loc.id} value={loc.id}>{loc.name}</option>
-               ))}
-             </select>
-           </div>
-          <SunTile locationId={locationId} />
-          <WaterTempsTile locationId={locationId} />
-          <TidesTile locationId={locationId} />
-        </div>
+<div className="dashboard__right">
+            <div className="dashboard__location-selector">
+              <select 
+                className="location-selector__dropdown"
+                value={locationId}
+                onChange={(e) => setLocationId(Number(e.target.value))}
+                disabled={locationsLoading}
+              >
+              {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+           <SunTile locationId={locationId} />
+           <WaterTempsTile locationId={locationId} />
+           <VisibilityTile locationId={locationId} />
+           <TidesTile locationId={locationId} />
+         </div>
       </div>
       
       <div className="dashboard__timeline">

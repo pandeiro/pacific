@@ -8,7 +8,12 @@ from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, Location, Condition, NOAAStation
-from schemas import WaterTemperatureReading, WaterTemperatureResponse, StationInfo
+from schemas import (
+    WaterTemperatureReading,
+    WaterTemperatureResponse,
+    StationInfo,
+    VisibilityResponse,
+)
 from logging_config import get_logger
 from utils.station_utils import calculate_distance, get_direction
 
@@ -187,4 +192,154 @@ async def get_water_temperature(
         hours_requested=hours,
         readings_count=len(history),
         station_info=station_info,
+    )
+
+
+@router.get("/conditions/visibility", response_model=VisibilityResponse)
+async def get_visibility(
+    location_id: int = Query(3, description="Location ID (default: 3 = Santa Monica)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get water visibility for a specific location.
+
+    Returns the most recent visibility report from dive conditions.
+    Falls back to the latest visibility data from any location if
+    the requested location has no data (South Coast Divers is global).
+    """
+    logger.info(
+        "Visibility endpoint called",
+        location_id=location_id,
+    )
+
+    location_result = await db.execute(
+        select(Location).where(Location.id == location_id)
+    )
+    location = location_result.scalar_one_or_none()
+
+    if not location:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Location not found: {location_id}",
+        )
+
+    vis_result = await db.execute(
+        select(Condition)
+        .where(Condition.location_id == location_id)
+        .where(Condition.condition_type == "visibility")
+        .order_by(desc(Condition.timestamp))
+        .limit(1)
+    )
+    visibility_record = vis_result.scalar_one_or_none()
+
+    if not visibility_record:
+        vis_result = await db.execute(
+            select(Condition)
+            .where(Condition.condition_type == "visibility")
+            .where(Condition.source == "south_coast_divers")
+            .order_by(desc(Condition.timestamp))
+            .limit(1)
+        )
+        visibility_record = vis_result.scalar_one_or_none()
+
+    visibility_min = None
+    visibility_max = None
+    swell_min = None
+    swell_max = None
+    source = None
+    source_url = None
+    last_updated = None
+
+    if visibility_record:
+        meta = visibility_record.meta or {}
+        visibility_min = meta.get("visibility_min")
+        visibility_max = meta.get("visibility_max")
+        source = visibility_record.source
+        source_url = visibility_record.source_url
+        last_updated = visibility_record.timestamp
+
+        if visibility_record.timestamp:
+            swell_result = await db.execute(
+                select(Condition)
+                .where(Condition.condition_type == "swell")
+                .where(Condition.source == visibility_record.source)
+                .where(Condition.timestamp == visibility_record.timestamp)
+                .limit(1)
+            )
+            swell_record = swell_result.scalar_one_or_none()
+            if swell_record:
+                swell_meta = swell_record.meta or {}
+                swell_min = swell_meta.get("swell_min")
+                swell_max = swell_meta.get("swell_max")
+
+    return VisibilityResponse(
+        location_id=location_id,
+        location_name=location.name,
+        visibility_min=visibility_min,
+        visibility_max=visibility_max,
+        swell_min=swell_min,
+        swell_max=swell_max,
+        source=source,
+        source_url=source_url,
+        last_updated=last_updated,
+    )
+
+    location_result = await db.execute(
+        select(Location).where(Location.id == location_id)
+    )
+    location = location_result.scalar_one_or_none()
+
+    if not location:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Location not found: {location_id}",
+        )
+
+    vis_result = await db.execute(
+        select(Condition)
+        .where(Condition.location_id == location_id)
+        .where(Condition.condition_type == "visibility")
+        .order_by(desc(Condition.timestamp))
+        .limit(1)
+    )
+    visibility_record = vis_result.scalar_one_or_none()
+
+    visibility_feet = None
+    swell_feet = None
+    confidence = None
+    source = None
+    source_url = None
+    last_updated = None
+
+    if visibility_record:
+        visibility_feet = (
+            int(visibility_record.value) if visibility_record.value else None
+        )
+        meta = visibility_record.meta or {}
+        confidence = meta.get("confidence")
+        source = visibility_record.source
+        source_url = visibility_record.source_url
+        last_updated = visibility_record.timestamp
+
+        if visibility_record.timestamp:
+            swell_result = await db.execute(
+                select(Condition)
+                .where(Condition.location_id == location_id)
+                .where(Condition.condition_type == "swell")
+                .where(Condition.timestamp == visibility_record.timestamp)
+                .limit(1)
+            )
+            swell_record = swell_result.scalar_one_or_none()
+            if swell_record:
+                swell_feet = int(swell_record.value) if swell_record.value else None
+
+    return VisibilityResponse(
+        location_id=location_id,
+        location_name=location.name,
+        visibility_feet=visibility_feet,
+        swell_feet=swell_feet,
+        confidence=confidence,
+        source=source,
+        source_url=source_url,
+        last_updated=last_updated,
     )

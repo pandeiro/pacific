@@ -24,6 +24,11 @@ PROFILES = {
         "user_template": 'Extract wildlife sightings from this ACS-LA Gray Whale Census report. Return JSON with "sightings" array. Each object has: "species" (string), "count" (integer), "location_hint" (string, optional), "behavior" (string, optional). Include zero counts if explicitly stated.\n\n{text}',
         "temperature": 0.0,
     },
+    "dive-conditions": {
+        "system": "Return only valid JSON.",
+        "user_template": 'Extract from dive report. Find visibility (viz, vis, visibility) and swell/surf heights in feet. Return JSON: {{"visibility": "number or range", "swell": "number or range"}}. Use null if not found.\n\n{text}',
+        "temperature": 0.0,
+    },
 }
 
 
@@ -117,7 +122,12 @@ class LLMClient:
                 content = re.sub(r"^```(?:json)?\s*", "", content)
                 content = re.sub(r"\s*```$", "", content)
 
-            return json.loads(content.strip())
+            try:
+                return json.loads(content.strip())
+            except json.JSONDecodeError as e:
+                print(f"[LLMClient] JSON parse error (profile={profile}): {e}")
+                print(f"[LLMClient] Raw LLM response: {content[:500]}...")
+                raise
         except Exception as e:
             print(f"[LLMClient] Extraction failed (profile={profile}): {e}")
             if fallback_fn is not None:

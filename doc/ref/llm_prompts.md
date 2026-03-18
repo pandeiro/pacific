@@ -17,6 +17,7 @@ Consumers must specify a profile name rather than passing ad-hoc prompts.
 |---------|-------------|-------------|----------|
 | `default` | Generic wildlife sightings | 0.0 | Fallback, testing |
 | `acs-la` | ACS-LA Gray Whale Census | 0.0 | Card 18b: narrative extraction |
+| `dive-conditions` | South Coast Divers visibility/swell | 0.0 | Card 15b: dive report extraction |
 
 ### Adding New Profiles
 
@@ -31,6 +32,12 @@ PROFILES = {
     "harbor-breeze": {
         "system": "Return only valid JSON.",
         "user_template": 'Extract wildlife sightings from this whale watching trip report. Return JSON with "sightings" array. Each object has: "species" (string), "count" (integer), "location_hint" (string, optional), "behavior" (string, optional).\n\n{text}',
+        "temperature": 0.0,
+    },
+    
+    "dive-conditions": {
+        "system": "Return only valid JSON.",
+        "user_template": 'Extract from dive report. Look for visibility (viz, vis, visibility) in feet. Look for swell height in feet. Return JSON: {"visibility_feet": int or null, "swell_feet": int or null, "confidence": "high" or "medium" or "low"}.\n\n{text}',
         "temperature": 0.0,
     },
 }
@@ -175,3 +182,40 @@ Expected output:
 - Test with larger models (glm-5, deepseek-v3) when available locally
 - Benchmark extraction accuracy across model sizes
 - Monitor for prompt drift as models update
+
+### `dive-conditions` Profile (Card 15b)
+
+Optimized for South Coast Divers dive condition reports. Extracts water visibility
+and swell height ranges from narrative dive reports.
+
+Key characteristics:
+- Visibility phrases: "viz", "vis", "visibility", "clarity"
+- Swell phrases: "swell", "surf", wave heights
+- Returns strings that may be ranges like "10-15" or single values like "10"
+- Backend parses strings into min/max integers
+- Consistency: 100% at temperature 0.0 across multiple runs
+
+Test input:
+```
+Good morning Divers!!! The swell models show a S swell still, the surf is 
+fairly decent at 1-3 feet. The viz looks like around 10 feet...
+```
+
+Expected output:
+```json
+{
+  "visibility": "10",
+  "swell": "1-3"
+}
+```
+
+Parsing in Python:
+```python
+def parse_range(value: str) -> tuple:
+    """Parse '10-15' → (10, 15) or '10' → (10, 10)"""
+    if "-" in value:
+        parts = value.split("-")
+        return int(parts[0]), int(parts[1])
+    v = int(float(value))
+    return v, v
+```

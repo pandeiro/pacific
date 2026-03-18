@@ -119,3 +119,15 @@ export interface WaterTemperatureResponse {
   readings_count: number;
   station_info?: StationInfo;
 }
+
+export interface VisibilityResponse {
+  location_id: number;
+  location_name: string;
+  visibility_min: number | null;
+  visibility_max: number | null;
+  swell_min: number | null;
+  swell_max: number | null;
+  source: string | null;
+  source_url: string | null;
+  last_updated: string | null;
+}

@@ -25,6 +25,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 3. Slice B — Conditions
 - [x] **Card 14: NOAA Water Temp Scraper**
 - [x] **Card 15: South Coast Divers Scraper**
+- [x] **Card 15b: Water Visibility Tile** — LLM extraction of visibility/swell from dive reports, visibility endpoint, VisibilityTile component
 - [x] **Card 16: Conditions API Endpoint** — Water temperature only (NOAA data), latest + historical data per location
 - [x] **Card 17: WaterTempsTile** — Refactored from ConditionsTile with 7-day sparkline, moved to right column
 - [x] **Card 17b: Tides Tile Bug Fix & Interpolation** — Fixed timezone handling, cosine interpolation, hover tooltips
