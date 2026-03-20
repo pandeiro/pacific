@@ -6,8 +6,8 @@ Posts contain narrative text followed by structured counts.
 
 import asyncio
 import re
-from datetime import datetime, timezone
-from typing import Any, List
+from datetime import datetime, timedelta, timezone, date
+from typing import Any, List, Optional
 
 import httpx
 from bs4 import BeautifulSoup
@@ -38,11 +38,126 @@ TODAY_SECTION_REGEX = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+DATE_FORMATS = [
+    "%d %B %Y",
+    "%B %d, %Y",
+    "%B %d %Y",
+    "%d %b %Y",
+    "%b %d, %Y",
+    "%b %d %Y",
+    "%d/%m/%Y",
+    "%m/%d/%Y",
+    "%d-%b-%Y",
+    "%b-%d-%Y",
+]
+
+RELATIVE_DATE_REGEX = re.compile(
+    r"(\d+)\s+(day|days|hour|hours|minute|minutes|week|weeks)\s+ago",
+    re.IGNORECASE,
+)
+
+HEADLINE_DATE_REGEX = re.compile(
+    r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+
+ALT_DATE_REGEX = re.compile(
+    r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+
+PASCIFIC = timezone(timedelta(hours=-8))
+
 
 def is_gray_whale_season() -> bool:
     """Check if we're in gray whale migration season (December - May)."""
     now = datetime.now()
     return now.month >= 12 or now.month <= 5
+
+
+def parse_date(text: str) -> Optional[date]:
+    """Parse the sighting date from ACS-LA Facebook post text.
+
+    Attempts three strategies in order:
+      1. Scan the headline for absolute date patterns like "16 March 2026".
+      2. Fall back to relative patterns like "4 days ago" (computed from
+         the Pacific timezone of the post).
+      3. Return None — the caller falls back to today's date.
+
+    Handles both word-month ("March") and abbreviated month ("Mar") formats.
+    """
+    text_snippet = text[:500]
+
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(text_snippet, fmt).date()
+        except ValueError:
+            pass
+
+    m = HEADLINE_DATE_REGEX.search(text_snippet)
+    if m:
+        day, month_abbr, year = m.group(1), m.group(2), m.group(3)
+        month_num = {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }.get(month_abbr.lower())
+        if month_num:
+            try:
+                return date(int(year), month_num, int(day))
+            except ValueError:
+                pass
+
+    m = ALT_DATE_REGEX.search(text_snippet)
+    if m:
+        month_abbr, day, year = m.group(1), m.group(2), m.group(3)
+        month_num = {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }.get(month_abbr.lower())
+        if month_num:
+            try:
+                return date(int(year), month_num, int(day))
+            except ValueError:
+                pass
+
+    m = RELATIVE_DATE_REGEX.search(text_snippet)
+    if m:
+        amount = int(m.group(1))
+        unit = m.group(2).lower()
+        now = datetime.now(PASCIFIC)
+        if unit.startswith("minute"):
+            delta = timedelta(minutes=amount)
+        elif unit.startswith("hour"):
+            delta = timedelta(hours=amount)
+        elif unit.startswith("day"):
+            delta = timedelta(days=amount)
+        elif unit.startswith("week"):
+            delta = timedelta(weeks=amount)
+        else:
+            return None
+        return (now - delta).date()
+
+    return None
 
 
 def extract_structured_counts(text: str) -> dict[str, int]:
@@ -124,7 +239,16 @@ class ACSLAScraper(BaseScraper):
         print(f"[{self.name}] Extracted counts: {counts}")
 
         timestamp = datetime.now(timezone.utc)
-        sighting_date = timestamp.date()
+        sighting_date = parse_date(latest_post)
+        if sighting_date:
+            print(f"[{self.name}] Parsed sighting date: {sighting_date}")
+        else:
+            sighting_date = timestamp.date()
+            print(
+                f"[{self.name}] Could not parse date from post, "
+                f"falling back to scrape date: {sighting_date}"
+            )
+
         sightings = []
 
         if counts["southbound"] > 0:

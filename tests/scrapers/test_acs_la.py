@@ -8,7 +8,12 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scraper"))
 
-from acs_la import ACSLAScraper, extract_structured_counts, is_gray_whale_season
+from acs_la import (
+    ACSLAScraper,
+    extract_structured_counts,
+    is_gray_whale_season,
+    parse_date,
+)
 
 
 class TestIsGrayWhaleSeason:
@@ -287,3 +292,79 @@ class TestCensusPostFormats:
         assert result["southbound"] == 0
         assert result["northbound"] == 0
         assert result["total"] == 0
+
+
+class TestParseDate:
+    """Test suite for ACS-LA post date extraction."""
+
+    def test_full_month_name(self):
+        """'16 March 2026' should parse to 2026-03-16."""
+        text = "ACS/LA Gray Whale Census, Pt. Vicente Interpretive Center, 16 March 2026 - heavy fog"
+        result = parse_date(text)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_month_name_with_comma(self):
+        """'March 16, 2026' should parse."""
+        text = "GRAY WHALES TODAY: Some content. ACS/LA update March 16, 2026."
+        result = parse_date(text)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_abbreviated_month(self):
+        """'16 Mar 2026' should parse."""
+        text = "Update: 16 Mar 2026 - light winds"
+        result = parse_date(text)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_day_first_numeric(self):
+        """'03/16/2026' should parse as MM/DD/YYYY."""
+        text = "Counts for 03/16/2026"
+        result = parse_date(text)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_dd_mm_yyyy(self):
+        """'16/03/2026' should parse as DD/MM/YYYY."""
+        text = "Sightings for 16/03/2026"
+        result = parse_date(text)
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_relative_days_ago(self):
+        """'4 days ago' should return a date ~4 days before today."""
+        with patch("acs_la.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 3, 20, 12, 0, 0)
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+            result = parse_date("Posted 4 days ago by ACS-LA")
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 16
+
+    def test_relative_hours_ago(self):
+        """'2 hours ago' should return today's date."""
+        with patch("acs_la.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 3, 20, 14, 0, 0)
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+            result = parse_date("Posted 2 hours ago")
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 20
+
+    def test_no_date_returns_none(self):
+        """Text with no date patterns should return None."""
+        result = parse_date("GRAY WHALES TODAY: Southbound: 5")
+        assert result is None
