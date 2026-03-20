@@ -112,24 +112,20 @@ def parse_sightings_from_text(text: str) -> List[tuple]:
     sightings = []
 
     patterns = [
-        (r"(\d[\d,]*)\s+(Gray\s*Whales?)", "Gray Whale"),
-        (r"(\d[\d,]*)\s+(Gray\s*Whale)", "Gray Whale"),
-        (r"(\d[\d,]*)\s+(Humpback\s*Whales?)", "Humpback Whale"),
-        (r"(\d[\d,]*)\s+(Humpback)", "Humpback Whale"),
-        (r"(\d[\d,]*)\s+(Fin\s*Whales?)", "Fin Whale"),
-        (r"(\d[\d,]*)\s+(Fin\s*Whale)", "Fin Whale"),
-        (r"(\d[\d,]*)\s+(Blue\s*Whales?)", "Blue Whale"),
-        (r"(\d[\d,]*)\s+(Blue\s*Whale)", "Blue Whale"),
-        (r"(\d[\d,]*)\s+(Minke\s*Whales?)", "Minke Whale"),
-        (r"(\d[\d,]*)\s+(Orca|Killer\s*Whale)", "Orca"),
-        (r"(\d[\d,]*)\s+(Common\s*Dolphins?)", "Common Dolphin"),
-        (r"(\d[\d,]*)\s+(Bottlenose\s*Dolphins?)", "Bottlenose Dolphin"),
+        (r"(\d[\d,]*)\s+(Gray\s+Whales?)", "Gray Whale"),
+        (r"(\d[\d,]*)\s+(Humpback(?:\s+Whales?)?)", "Humpback Whale"),
+        (r"(\d[\d,]*)\s+(Fin\s+Whales?)", "Fin Whale"),
+        (r"(\d[\d,]*)\s+(Blue\s+Whales?)", "Blue Whale"),
+        (r"(\d[\d,]*)\s+(Minke\s+Whales?)", "Minke Whale"),
+        (r"(\d[\d,]*)\s+(Orca|Killer\s+Whale)", "Orca"),
+        (r"(\d[\d,]*)\s+(Common\s+Dolphins?)", "Common Dolphin"),
+        (r"(\d[\d,]*)\s+(Bottlenose\s+Dolphins?)", "Bottlenose Dolphin"),
         (
-            r"(\d[\d,]*)\s+(Pacific\s*Whitesided\s*Dolphins?)",
+            r"(\d[\d,]*)\s+(Pacific\s+Whitesided\s+Dolphins?)",
             "Pacific White-Sided Dolphin",
         ),
-        (r"(\d[\d,]*)\s+(White-?Sided\s*Dolphins?)", "Pacific White-Sided Dolphin"),
-        (r"(\d[\d,]*)\s+(Risso'?s?\s*Dolphins?)", "Risso's Dolphin"),
+        (r"(\d[\d,]*)\s+(White-?Sided\s+Dolphins?)", "Pacific White-Sided Dolphin"),
+        (r"(\d[\d,]*)\s+(Risso'?s?\s+Dolphins?)", "Risso's Dolphin"),
     ]
 
     for pattern, species in patterns:

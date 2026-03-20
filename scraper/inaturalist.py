@@ -215,8 +215,8 @@ class INatScraper(BaseScraper):
             ts = datetime.fromisoformat(time_observed.replace("Z", "+00:00"))
             obs_date = ts.astimezone(pacific).date()
         elif observed_on:
-            ts = datetime.strptime(observed_on, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            obs_date = ts.astimezone(pacific).date()
+            ts = datetime.strptime(observed_on, "%Y-%m-%d").replace(tzinfo=pacific)
+            obs_date = ts.date()
         else:
             return None
         if obs_date != pacific_today:

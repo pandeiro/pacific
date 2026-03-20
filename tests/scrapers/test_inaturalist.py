@@ -8,6 +8,10 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scraper"))
 
+import scraper.db as scraper_db
+
+sys.modules["db"] = scraper_db
+
 from inaturalist import INatScraper, INAT_TAXA, SOCAL_BBOX
 
 
@@ -66,8 +70,8 @@ class TestINatScraper:
         mock_obs = {
             "id": 12345,
             "geojson": {"coordinates": [-118.5, 34.0]},
-            "observed_on": "2026-03-15",
-            "time_observed_at": "2026-03-15T14:30:00Z",
+            "observed_on": "2026-03-20",
+            "time_observed_at": "2026-03-20T14:30:00Z",
             "taxon": {
                 "preferred_common_name": "Common Dolphin",
                 "name": "Delphinus delphis",
@@ -101,7 +105,7 @@ class TestINatScraper:
         mock_obs = {
             "id": 12348,
             "geojson": {"coordinates": [-150.0, 40.0]},  # Far outside SoCal
-            "observed_on": "2026-03-15",
+            "observed_on": "2026-03-20",
             "taxon": {"preferred_common_name": "Gray Whale"},
             "quality_grade": "research",
         }
@@ -137,7 +141,7 @@ class TestINatScraper:
             {
                 "id": 1,
                 "geojson": {"coordinates": [-118.5, 34.0]},
-                "observed_on": "2026-03-15",
+                "observed_on": "2026-03-20",
                 "taxon": {"preferred_common_name": "Common Dolphin"},
                 "quality_grade": "research",
                 "count": 5,
@@ -145,7 +149,7 @@ class TestINatScraper:
             {
                 "id": 2,
                 "geojson": {"coordinates": [-118.6, 34.1]},
-                "observed_on": "2026-03-15",
+                "observed_on": "2026-03-20",
                 "taxon": {"preferred_common_name": "Common Dolphin"},
                 "quality_grade": "needs_id",
                 "count": 3,
@@ -158,14 +162,14 @@ class TestINatScraper:
             "inaturalist.find_nearest_location",
             AsyncMock(return_value=(1, None)),
         ):
-            records = await scraper._aggregate(observations, date(2026, 3, 15))
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
 
         assert len(records) == 1
         record = records[0]
         assert record["source"] == "inaturalist"
         assert record["location_id"] == 1
         assert record["species"] == "Common Dolphin"
-        assert record["sighting_date"] == date(2026, 3, 15)
+        assert record["sighting_date"] == date(2026, 3, 20)
         assert record["count"] == 8
         assert record["source_url"] is None
         assert record["metadata"]["obs_count"] == 2
@@ -180,7 +184,7 @@ class TestINatScraper:
             {
                 "id": 10,
                 "geojson": {"coordinates": [-118.5, 34.0]},
-                "observed_on": "2026-03-15",
+                "observed_on": "2026-03-20",
                 "taxon": {"preferred_common_name": "Common Dolphin"},
                 "quality_grade": "research",
                 "count": 5,
@@ -188,7 +192,7 @@ class TestINatScraper:
             {
                 "id": 11,
                 "geojson": {"coordinates": [-118.5, 34.0]},
-                "observed_on": "2026-03-15",
+                "observed_on": "2026-03-20",
                 "taxon": {"preferred_common_name": "Gray Whale"},
                 "quality_grade": "research",
                 "count": 2,
@@ -201,7 +205,7 @@ class TestINatScraper:
             "inaturalist.find_nearest_location",
             AsyncMock(return_value=(1, None)),
         ):
-            records = await scraper._aggregate(observations, date(2026, 3, 15))
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
 
         assert len(records) == 2
         species_list = sorted(r["species"] for r in records)
