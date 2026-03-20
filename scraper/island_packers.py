@@ -190,8 +190,8 @@ class IslandPackersScraper(BaseScraper):
 
         current_year = datetime.now().year
         current_month = datetime.now().month
-
         pacific = timezone(timedelta(hours=-8))
+        scrape_timestamp = datetime.now(timezone.utc)
 
         for row in rows[header_index + 1 :]:
             if not row or len(row) < 2:
@@ -204,11 +204,13 @@ class IslandPackersScraper(BaseScraper):
             if date_str.isdigit():
                 day = int(date_str)
                 try:
-                    timestamp = datetime(current_year, current_month, day, 12, 0, 0)
-                    timestamp = timestamp.replace(tzinfo=pacific)
-                    timestamp = timestamp.astimezone(timezone.utc)
+                    parsed_dt = datetime(current_year, current_month, day, 12, 0, 0)
+                    parsed_dt = parsed_dt.replace(tzinfo=pacific)
+                    parsed_dt = parsed_dt.astimezone(timezone.utc)
                 except ValueError:
                     continue
+
+                sighting_date = parsed_dt.date()
 
                 for col_idx, species in column_indices.items():
                     if col_idx < len(row):
@@ -216,70 +218,8 @@ class IslandPackersScraper(BaseScraper):
                         count = parse_count(count_str)
                         if count is not None:
                             record = {
-                                "timestamp": timestamp,
-                                "location_id": location_id,
-                                "species": species,
-                                "count": count,
-                                "source": "island_packers",
-                                "source_url": "https://www.islandpackers.com/information/marine-mammal-sightings/",
-                                "confidence": "high",
-                                "raw_text": f"{date_str}: {count} x {species}",
-                                "metadata": {},
-                            }
-                            sightings.append(record)
-
-        return sightings
-
-        header_line = None
-        header_index = 0
-        for i, line in enumerate(lines):
-            if "Humpback Whales" in line or "Common Dolphins" in line:
-                header_line = line
-                header_index = i
-                break
-
-        if not header_line:
-            print(f"[{self.name}] Could not find daily sightings header")
-            return sightings
-
-        headers = [h.strip().strip('"') for h in header_line.split(",")]
-        print(f"[{self.name}] Found {len(headers)} columns in daily sightings")
-
-        column_indices = {}
-        for i, header in enumerate(headers):
-            if header in SPECIES_COLUMNS:
-                column_indices[header] = i
-
-        current_year = datetime.now().year
-        current_month = datetime.now().month
-
-        for line in lines[header_index + 1 :]:
-            if not line.strip():
-                continue
-
-            parts = [p.strip().strip('"') for p in line.split(",")]
-            if len(parts) < 2:
-                continue
-
-            date_str = parts[0]
-            if date_str.isdigit():
-                day = int(date_str)
-                pacific = timezone(timedelta(hours=-8))
-                try:
-                    timestamp = datetime(current_year, current_month, day, 12, 0, 0)
-                    timestamp = timestamp.replace(tzinfo=pacific)
-                    timestamp = timestamp.astimezone(timezone.utc)
-                except ValueError:
-                    continue
-
-                for header, idx in column_indices.items():
-                    if idx < len(parts):
-                        count_str = parts[idx]
-                        count = parse_count(count_str)
-                        if count is not None:
-                            species = SPECIES_COLUMNS[header]
-                            record = {
-                                "timestamp": timestamp,
+                                "timestamp": scrape_timestamp,
+                                "sighting_date": sighting_date,
                                 "location_id": location_id,
                                 "species": species,
                                 "count": count,
