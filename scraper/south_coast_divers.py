@@ -1,6 +1,7 @@
 """South Coast Divers Scraper - Fetches dive condition reports from southcoastdivers.com."""
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from typing import List, Any, Optional
 import httpx
@@ -70,6 +71,15 @@ class SouthCoastDiversScraper(BaseScraper):
 
         print(f"[{self.name}] Extracted dive report ({len(dive_report_text)} chars)")
 
+        # Parse the date from the dive report text (e.g., "03/20/2026")
+        report_date = self._parse_report_date(dive_report_text)
+        if report_date:
+            timestamp = report_date
+            print(f"[{self.name}] Parsed report date: {timestamp.strftime('%Y-%m-%d')}")
+        else:
+            timestamp = datetime.now(timezone.utc)
+            print(f"[{self.name}] Could not parse report date, using current time")
+
         async with get_db_session() as session:
             is_duplicate = await check_duplicate_dive_report(
                 session, location.id, dive_report_text, hours=96
@@ -81,7 +91,6 @@ class SouthCoastDiversScraper(BaseScraper):
                 )
                 return []
 
-        timestamp = datetime.now(timezone.utc)
         records = []
 
         dive_report_record = {
@@ -269,6 +278,63 @@ class SouthCoastDiversScraper(BaseScraper):
             )
             response.raise_for_status()
             return response.text
+
+    def _parse_report_date(self, text: str) -> Optional[datetime]:
+        """Parse the date from a dive report text.
+
+        Looks for date patterns like '03/20/2026' or 'March 20, 2026' at the
+        beginning of the text and returns a UTC datetime for noon that day.
+
+        Returns None if no date is found.
+        """
+        # Try MM/DD/YYYY format (common in the reports)
+        match = re.search(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b", text)
+        if match:
+            month, day, year = (
+                int(match.group(1)),
+                int(match.group(2)),
+                int(match.group(3)),
+            )
+            try:
+                # Return noon UTC for that date
+                return datetime(year, month, day, 12, 0, 0, tzinfo=timezone.utc)
+            except ValueError:
+                pass
+
+        # Try Month DD, YYYY format
+        match = re.search(
+            r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b",
+            text,
+            re.IGNORECASE,
+        )
+        if match:
+            month_str, day, year = (
+                match.group(1),
+                int(match.group(2)),
+                int(match.group(3)),
+            )
+            month_map = {
+                "january": 1,
+                "february": 2,
+                "march": 3,
+                "april": 4,
+                "may": 5,
+                "june": 6,
+                "july": 7,
+                "august": 8,
+                "september": 9,
+                "october": 10,
+                "november": 11,
+                "december": 12,
+            }
+            month = month_map.get(month_str.lower())
+            if month:
+                try:
+                    return datetime(year, month, day, 12, 0, 0, tzinfo=timezone.utc)
+                except ValueError:
+                    pass
+
+        return None
 
     def _extract_dive_report(self, html_content: str) -> Optional[str]:
         """Extract dive report text from the first table after 'Here is the latest group post.'"""
