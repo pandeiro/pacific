@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import './WildlifeIntelTile.css';
+import './WildlifeTile.css';
 import type { SightingRecord, TaxonGroup } from '../../types';
 import { useWildlife } from '../../hooks/useWildlife';
 import { getSpeciesEmoji } from '../../utils/speciesEmoji';
@@ -50,7 +50,7 @@ function getTimeGroup(sightingDate: string | null): string {
   return 'Older';
 }
 
-export function WildlifeIntelTile() {
+export function WildlifeTile() {
   const { sightings, isLoading, error } = useWildlife();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<TaxonGroup>>(
@@ -128,20 +128,20 @@ export function WildlifeIntelTile() {
   const hasResults = filteredSightings.length > 0;
 
   return (
-    <div className="tile wildlife-intel">
-      <div className="tile__header">
-        <div className="tile__title">
-          <span className="tile__title-icon">🔍</span>
-          Wildlife Intel
+    <div className="tile wildlife-tile">
+        <div className="tile__header">
+          <div className="tile__title">
+            <span className="tile__title-icon">🔍</span>
+            Wildlife Tile
+          </div>
         </div>
-      </div>
 
       <div className="tile__content">
         {/* Search bar */}
-        <div className="wildlife-intel__search">
+        <div className="wildlife-tile__search">
           <input
             type="text"
-            className="wildlife-intel__search-input"
+            className="wildlife-tile__search-input"
             placeholder="Search species, location, or source..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -149,12 +149,12 @@ export function WildlifeIntelTile() {
         </div>
 
         {/* Taxon filter pills */}
-        <div className="wildlife-intel__filters">
+        <div className="wildlife-tile__filters">
           {TAXON_GROUPS.map((group) => (
             <button
               key={group}
-              className={`wildlife-intel__filter-pill ${
-                activeFilters.has(group) ? 'wildlife-intel__filter-pill--active' : ''
+              className={`wildlife-tile__filter-pill ${
+                activeFilters.has(group) ? 'wildlife-tile__filter-pill--active' : ''
               }`}
               onClick={() => toggleTaxonGroup(group)}
             >
@@ -164,12 +164,12 @@ export function WildlifeIntelTile() {
         </div>
 
         {/* Loading/Error states */}
-        {isLoading && <div className="wildlife-intel__status">Loading sightings...</div>}
-        {error && <div className="wildlife-intel__status wildlife-intel__status--error">Error: {error.message}</div>}
+        {isLoading && <div className="wildlife-tile__status">Loading sightings...</div>}
+        {error && <div className="wildlife-tile__status wildlife-tile__status--error">Error: {error.message}</div>}
 
         {/* Empty state */}
         {!isLoading && !error && !hasResults && (
-          <div className="wildlife-intel__status">No sightings reported in the last 7 days.</div>
+          <div className="wildlife-tile__status">No sightings reported in the last 7 days.</div>
         )}
 
         {/* Sightings list, grouped by recency */}

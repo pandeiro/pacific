@@ -5,7 +5,7 @@ import { ActivityScoresTile } from './tiles/ActivityScoresTile';
 import { LiveCamTile } from './tiles/LiveCamTile';
 import { WaterTempsTile } from './tiles/WaterTempsTile';
 import { VisibilityTile } from './tiles/VisibilityTile';
-import { WildlifeIntelTile } from './tiles/WildlifeIntelTile';
+import { WildlifeTile } from './tiles/WildlifeTile';
 import { SunTile } from './tiles/SunTile';
 import { TidesTile } from './tiles/TidesTile';
 import { DriveTimesTile } from './tiles/DriveTimesTile';
@@ -28,7 +28,7 @@ export function Dashboard() {
         
         <div className="dashboard__center">
           <ActivityScoresTile />
-          <WildlifeIntelTile />
+          <WildlifeTile />
           <LiveCamTile />
           <DriveTimesTile />
         </div>
