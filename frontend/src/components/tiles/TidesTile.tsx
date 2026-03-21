@@ -198,23 +198,27 @@ export function TidesTile({ locationId }: TidesTileProps) {
 
       <div className="tile__content">
         <div className="tides-tile__display">
-          {tides?.next_low && (
-            <div className="tides-tile__time-block tides-tile__low">
-              <span className="tides-tile__time" data-testid="next-low">
-                {formatTime(tides.next_low.timestamp)}
+          {tides?.next_tide && (
+            <div className={`tides-tile__time-block tides-tile__${tides.next_tide.type}`}>
+              <span className="tides-tile__time" data-testid="next-tide">
+                {formatTime(tides.next_tide.timestamp)}
               </span>
-              <span className="tides-tile__label">Low {tides.next_low.height_ft.toFixed(1)}ft</span>
+              <span className="tides-tile__label">
+                {tides.next_tide.type === 'low' ? 'Low' : 'High'} {tides.next_tide.height_ft.toFixed(1)}ft
+              </span>
             </div>
           )}
           
           <div className="tides-tile__arrow">→</div>
           
-          {tides?.next_high && (
-            <div className="tides-tile__time-block tides-tile__high">
-              <span className="tides-tile__time" data-testid="next-high">
-                {formatTime(tides.next_high.timestamp)}
+          {tides?.next_tide_after && (
+            <div className={`tides-tile__time-block tides-tile__${tides.next_tide_after.type}`}>
+              <span className="tides-tile__time" data-testid="next-tide-after">
+                {formatTime(tides.next_tide_after.timestamp)}
               </span>
-              <span className="tides-tile__label">High {tides.next_high.height_ft.toFixed(1)}ft</span>
+              <span className="tides-tile__label">
+                {tides.next_tide_after.type === 'low' ? 'Low' : 'High'} {tides.next_tide_after.height_ft.toFixed(1)}ft
+              </span>
             </div>
           )}
         </div>

@@ -80,8 +80,8 @@ export interface TidesResponse {
   station_id: string;
   location_name: string;
   events: TideEvent[];
-  next_low: TideEvent | null;
-  next_high: TideEvent | null;
+  next_tide: TideEvent | null;
+  next_tide_after: TideEvent | null;
   current_height_ft: number | null;
   data_through: string;
   station_info?: StationInfo;

@@ -18,7 +18,8 @@ TRUNCATE sightings;
 -- ── 2. Add sighting_date column ───────────────────────────────────────────────
 -- NO DEFAULT — the original bug was DEFAULT timestamp::date which PostgreSQL
 -- rejects as column self-reference.
-ALTER TABLE sightings ADD COLUMN sighting_date DATE NOT NULL;
+-- Using IF NOT EXISTS for idempotency (column may already exist from failed runs).
+ALTER TABLE sightings ADD COLUMN IF NOT EXISTS sighting_date DATE NOT NULL;
 
 -- ── 3. Replace simple PK with composite PK (id, timestamp) ──────────────────
 -- TimescaleDB hypertables require partitioning column in the primary key.

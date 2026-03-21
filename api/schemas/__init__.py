@@ -35,8 +35,8 @@ class TidesResponse(BaseModel):
     station_id: str
     location_name: str
     events: list[TideEvent]
-    next_low: Optional[TideEvent] = None
-    next_high: Optional[TideEvent] = None
+    next_tide: Optional[TideEvent] = None
+    next_tide_after: Optional[TideEvent] = None
     current_height_ft: Optional[float] = None
     data_through: datetime
     station_info: Optional[StationInfo] = None

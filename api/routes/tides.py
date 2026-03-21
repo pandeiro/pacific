@@ -81,7 +81,7 @@ async def get_tides(
     from database import NOAAStation
 
     station_result = await db.execute(
-        select(NOAAStation).where(NOAAStation.id == location.nearest_noaa_station_id)
+        select(NOAAStation).where(NOAAStation.station_id == location.noaa_station_id)
     )
     station = station_result.scalars().first()
 
@@ -124,10 +124,11 @@ async def get_tides(
         for tide in unique_tides
     ]
 
-    # Find next low and next high
+    # Find next two tides chronologically (regardless of type)
     future_events = [e for e in events if e.timestamp > now]
-    next_low = next((e for e in future_events if e.type == "low"), None)
-    next_high = next((e for e in future_events if e.type == "high"), None)
+    future_events.sort(key=lambda e: e.timestamp)
+    next_tide = future_events[0] if future_events else None
+    next_tide_after = future_events[1] if len(future_events) > 1 else None
 
     # Interpolate current height
     # Include some past events for interpolation
@@ -179,8 +180,8 @@ async def get_tides(
         station_id=station_id,
         location_name=location.name,
         events=events,
-        next_low=next_low,
-        next_high=next_high,
+        next_tide=next_tide,
+        next_tide_after=next_tide_after,
         current_height_ft=current_height,
         data_through=data_through,
         station_info=station_info,
