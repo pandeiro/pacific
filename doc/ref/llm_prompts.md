@@ -113,6 +113,8 @@ If zero counts are meaningful (e.g., "no whales spotted today"), add:
 5. **Provide fallback regex** for critical data when LLM fails
 6. **Validate output** - Check for required fields, correct types, reasonable values
 7. **Use predefined profiles** - All prompts must be in PROFILES, not ad-hoc
+8. **Check `supports_llm()`** before running scrapers that need LLM capability
+9. **Keep MODEL_PREFERENCE_LIST updated** with models available in all environments
 
 ## Docker Networking
 
@@ -124,12 +126,52 @@ The LLM client connects to Ollama running on the Docker host via
 self.base_url = "http://host.docker.internal:11434"
 ```
 
-To use a different model, set the `LLM_MODEL` environment variable:
+For Docker containers to reach Ollama on the host, the container must have
+`host.docker.internal` configured via `extra_hosts`:
 
-```bash
-# In .env or docker-compose.yml
-LLM_MODEL=llama3.2:1b
+```yaml
+# In docker-compose.yml
+services:
+  scraper:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 ```
+
+## Model Discovery
+
+The LLM client automatically discovers available models and selects the best one:
+
+```python
+# Model preference list (in order of preference)
+MODEL_PREFERENCE_LIST = ["llama3.2:1b", "llama3.2:3b"]
+```
+
+**Selection Logic:**
+
+1. If `LLM_MODEL` env var is set and that model is available → use it
+2. Otherwise, try models in `MODEL_PREFERENCE_LIST` in order
+3. First available model from the list is used
+
+**Error Behavior:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Ollama unreachable (connection error) | Continue without LLM, scraper uses fallback extraction |
+| Ollama reachable, no preferred models | Raise `ValueError` (configuration issue) |
+| Ollama reachable, `LLM_MODEL` set but not installed | Raise `ValueError` (configuration issue) |
+
+**Why fail-only-when-reachable?**
+
+- Transient network issues (Ollama restarting) should not crash the scheduler
+- Configuration mismatches (missing model) should fail loudly so they get fixed
+- Scraper will fall back to regex extraction when LLM is unavailable
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LLM_MODEL` | Explicit model to use (overrides auto-discovery) | Auto-select from preference list |
+| `OLLAMA_BASE_URL` | Ollama server URL | `http://host.docker.internal:11434` |
 
 ## Example Usage
 
@@ -142,11 +184,31 @@ async def extract_acs_la(text: str) -> dict:
         result = await client.extract(text, profile="acs-la")
         return result
 
-async def extract_generic(text: str) -> dict:
+async def extract_with_fallback(text: str) -> dict:
+    def regex_fallback(raw_text: str) -> dict:
+        # Regex-based extraction as fallback
+        import re
+        # ... fallback logic ...
+        return {"visibility": None, "swell": None}
+    
     async with LLMClient() as client:
-        # Use default profile for generic extraction
-        result = await client.extract(text, profile="default")
+        # LLM extraction with fallback on failure
+        result = await client.extract(
+            text, 
+            profile="dive-conditions",
+            fallback_fn=regex_fallback
+        )
         return result
+
+# Check if LLM is available before running
+async def conditional_scrape():
+    async with LLMClient() as client:
+        if not client.supports_llm():
+            print("LLM not available, using regex-only extraction")
+            # ... regex extraction logic ...
+        else:
+            print(f"Using LLM model: {client.model}")
+            # ... LLM extraction logic ...
 ```
 
 ## Profile-Specific Notes
