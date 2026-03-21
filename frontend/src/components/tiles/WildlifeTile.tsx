@@ -33,21 +33,24 @@ function formatRecency(sightingDate: string | null): string {
   return formatter.format(date);
 }
 
-function getTimeGroup(sightingDate: string | null): string {
-  if (!sightingDate) return 'Older';
+function getTimeGroup(sightingDate: string | null): string | null {
+  if (!sightingDate) return null;
   
   const date = new Date(sightingDate);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-  if (diffDays < 1) {
-    return 'Today';
+  if (diffDays < 2) {
+    return 'Last Day';
   }
-  if (diffDays < 7) {
-    return 'This Week';
+  if (diffDays <= 7) {
+    return 'Last Week';
   }
-  return 'Older';
+  if (diffDays <= 50) {
+    return 'Older';
+  }
+  return null;
 }
 
 export function WildlifeTile() {
@@ -90,14 +93,14 @@ export function WildlifeTile() {
   // Group by recency
   const groupedSightings = useMemo(() => {
     const groups: GroupedSightings = {
-      'Today': [],
-      'This Week': [],
+      'Last Day': [],
+      'Last Week': [],
       'Older': [],
     };
 
     filteredSightings.forEach((s) => {
       const group = getTimeGroup(s.sighting_date);
-      if (group in groups) {
+      if (group && group in groups) {
         groups[group].push(s);
       }
     });
@@ -175,7 +178,7 @@ export function WildlifeTile() {
         {/* Sightings list, grouped by recency */}
         {!isLoading && !error && hasResults && (
           <div className="sightings-container">
-            {['Today', 'This Week', 'Older'].map((timeLabel) => {
+            {['Last Day', 'Last Week', 'Older'].map((timeLabel) => {
               const group = groupedSightings[timeLabel];
               if (group.length === 0) return null;
 
