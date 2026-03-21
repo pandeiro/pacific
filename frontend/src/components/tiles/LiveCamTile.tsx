@@ -35,14 +35,14 @@ export function LiveCamTile({ onLocationChange }: LiveCamTileProps) {
       <div className="tile__header">
         <div className="tile__title">
           <span className="tile__title-icon">📹</span>
-          Live Cam
+          Live
         </div>
         {activeCam && (
           <span className="live-cam__source">{activeCam.source_name}</span>
         )}
       </div>
 
-      <div className="live-cam__viewport">
+      <div className="live-cam__video-container">
         {isLoading && (
           <div className="live-cam__placeholder">
             <div className="live-cam__spinner" />
@@ -58,27 +58,28 @@ export function LiveCamTile({ onLocationChange }: LiveCamTileProps) {
         )}
 
         {!isLoading && !error && activeCam && (
-          <iframe
-            key={activeCam.id}
-            className="live-cam__iframe"
-            src={getEmbedSrc(activeCam)}
-            title={activeCam.name}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        )}
-
-        {!isLoading && !error && activeCam && (
-          <div className="live-cam__overlay">
-            <span className="live-cam__live-badge">
-              <span className="live-cam__live-dot" />
-              LIVE
-            </span>
-            <span className="live-cam__cam-name">{activeCam.name}</span>
-            {activeCam.location_name && (
-              <span className="live-cam__location-badge">{activeCam.location_name}</span>
-            )}
-          </div>
+          <>
+            <iframe
+              key={activeCam.id}
+              className="live-cam__iframe"
+              src={getEmbedSrc(activeCam)}
+              title={activeCam.name}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+            <div className="live-cam__overlay">
+              <span className="live-cam__live-badge">
+                <span className="live-cam__live-dot" />
+                LIVE
+              </span>
+              <div className="live-cam__info">
+                <span className="live-cam__cam-name">{activeCam.name}</span>
+                {activeCam.location_name && (
+                  <span className="live-cam__location-badge">{activeCam.location_name}</span>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
 

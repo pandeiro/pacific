@@ -1,7 +1,7 @@
 .dashboard {
   height: 100vh;
   display: grid;
-  grid-template-columns: 300px 1fr 320px;
+  grid-template-columns: 280px 1fr 300px;
   grid-template-rows: 1fr 100px;
   gap: var(--tile-gap);
   padding: var(--tile-gap);
@@ -33,6 +33,8 @@
   flex-direction: column;
   gap: var(--tile-gap);
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Right column */
