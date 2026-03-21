@@ -1,2 +1,3 @@
 - Migrated from custom SQL scripts to Alembic for schema tracking
 - Consolidated pre-Alembic migrations (001-010) and seed data into Alembic baseline revision so fresh databases bootstrap automatically
+- Fixed visibility tile: metadata persistence, scraper startup retry logic, and LLM extraction fallback
