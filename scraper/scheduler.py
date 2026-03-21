@@ -11,11 +11,14 @@ import os
 import sys
 from pathlib import Path
 
+import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Import BaseScraper to identify scraper classes
 from base import BaseScraper
+
+logger = structlog.get_logger("scheduler")
 
 
 def discover_scrapers() -> list:
@@ -31,7 +34,7 @@ def discover_scrapers() -> list:
         module_name = file_path.stem
 
         # Skip non-scraper files
-        if module_name in ("base", "scheduler", "__init__"):
+        if module_name in ("base", "scheduler", "__init__", "logging_config"):
             continue
 
         try:
@@ -48,16 +51,19 @@ def discover_scrapers() -> list:
                     schedule = getattr(obj, "schedule", None)
                     if schedule:
                         scrapers.append((obj, schedule))
-                        print(
-                            f"[Scheduler] Discovered scraper: {name} with schedule '{schedule}'"
+                        logger.info(
+                            "scraper_discovered",
+                            scraper=name,
+                            schedule=schedule,
                         )
                     else:
-                        print(
-                            f"[Scheduler] Warning: {name} has no schedule attribute, skipping"
+                        logger.warning(
+                            "scraper_no_schedule",
+                            scraper=name,
                         )
 
         except Exception as e:
-            print(f"[Scheduler] Error loading module {module_name}: {e}")
+            logger.error("module_load_failed", module=module_name, error=str(e))
             continue
 
     return scrapers
@@ -85,47 +91,59 @@ def parse_cron(cron_expr: str) -> dict:
 async def run_scraper(scraper_class, retry_count=0, max_retries=3):
     """Execute a single scraper run with retry logic."""
     scraper_name = scraper_class.__name__
-    print(f"[Scheduler] Running {scraper_name}...")
+    logger.info("scraper_running", scraper=scraper_name)
 
     try:
         scraper = scraper_class()
         records = await scraper.run()
-        print(f"[Scheduler] {scraper_name} completed: {len(records)} records scraped")
+        logger.info(
+            "scraper_completed",
+            scraper=scraper_name,
+            records=len(records),
+        )
         return True  # Success
     except Exception as e:
-        print(f"[Scheduler] {scraper_name} failed: {e}")
+        logger.error(
+            "scraper_failed",
+            scraper=scraper_name,
+            error=str(e),
+            retry=retry_count,
+        )
         # Don't re-raise - we want the scheduler to continue even if one scraper fails
 
         # Retry logic for transient failures (like database not ready)
         if retry_count < max_retries:
             retry_delay = 60 * (retry_count + 1)  # Exponential backoff: 60s, 120s, 180s
-            print(
-                f"[Scheduler] Will retry {scraper_name} in {retry_delay}s (attempt {retry_count + 1}/{max_retries})"
+            logger.info(
+                "scraper_retrying",
+                scraper=scraper_name,
+                delay_s=retry_delay,
+                attempt=retry_count + 1,
+                max_retries=max_retries,
             )
             await asyncio.sleep(retry_delay)
             return await run_scraper(scraper_class, retry_count + 1, max_retries)
         else:
-            print(
-                f"[Scheduler] {scraper_name} failed after {max_retries} retries, giving up"
+            logger.error(
+                "scraper_exhausted_retries",
+                scraper=scraper_name,
+                max_retries=max_retries,
             )
             return False  # Failed after retries
 
 
 async def main():
     """Main entry point - set up and run the scheduler."""
-    print("=" * 60)
-    print("Pacifica Scraper Scheduler")
-    print("=" * 60)
+    logger.info("scheduler_starting")
 
     # Discover all scrapers
     scrapers = discover_scrapers()
 
     if not scrapers:
-        print("[Scheduler] No scrapers found! Exiting.")
+        logger.error("no_scrapers_found")
         return
 
-    print(f"[Scheduler] Loaded {len(scrapers)} scraper(s)")
-    print("-" * 60)
+    logger.info("scrapers_loaded", count=len(scrapers))
 
     # Create the scheduler
     scheduler = AsyncIOScheduler()
@@ -147,36 +165,43 @@ async def main():
                 max_instances=1,  # Don't run the same scraper concurrently
             )
 
-            print(f"[Scheduler] Scheduled {scraper_class.__name__}: {schedule}")
+            logger.info(
+                "scraper_scheduled",
+                scraper=scraper_class.__name__,
+                cron=schedule,
+            )
 
         except Exception as e:
-            print(f"[Scheduler] Error scheduling {scraper_class.__name__}: {e}")
+            logger.error(
+                "scraper_schedule_failed",
+                scraper=scraper_class.__name__,
+                error=str(e),
+            )
             continue
 
-    print("-" * 60)
-    print("[Scheduler] Starting scheduler...")
+    logger.info("scheduler_starting_jobs")
     scheduler.start()
 
     # Run immediately on startup for testing (optional - remove in production)
-    print("[Scheduler] Running all scrapers once on startup...")
+    logger.info("scheduler_startup_runs")
     for scraper_class, _ in scrapers:
         success = await run_scraper(scraper_class)
         if not success:
-            print(
-                f"[Scheduler] Warning: {scraper_class.__name__} failed on startup and could not be retried"
+            logger.warning(
+                "startup_run_failed",
+                scraper=scraper_class.__name__,
             )
 
-    print("[Scheduler] Scheduler is running. Press Ctrl+C to exit.")
-    print("=" * 60)
+    logger.info("scheduler_running")
 
     # Keep the event loop running
     try:
         while True:
             await asyncio.sleep(60)
     except (KeyboardInterrupt, SystemExit):
-        print("\n[Scheduler] Shutting down...")
+        logger.info("scheduler_shutting_down")
         scheduler.shutdown()
-        print("[Scheduler] Goodbye!")
+        logger.info("scheduler_stopped")
 
 
 if __name__ == "__main__":

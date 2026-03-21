@@ -100,29 +100,29 @@ class IslandPackersScraper(BaseScraper):
 
     async def scrape(self) -> List[dict[str, Any]]:
         """Fetch and process whale sightings from Island Packers Google Sheet."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f"Starting scrape...")
 
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(f"[{self.name}] Location '{self.location_slug}' not found!")
+            self.logger.info(f"Location '{self.location_slug}' not found!")
             return []
 
-        print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
+        self.logger.info(f"Found location: {location.name} (ID: {location.id})")
 
         csv_content = await self._fetch_csv()
-        print(f"[{self.name}] Fetched CSV ({len(csv_content)} chars)")
+        self.logger.info(f"Fetched CSV ({len(csv_content)} chars)")
 
         daily_sightings = self._parse_daily_sightings(csv_content, location.id)
-        print(f"[{self.name}] Parsed {len(daily_sightings)} daily sightings")
+        self.logger.info(f"Parsed {len(daily_sightings)} daily sightings")
 
         if daily_sightings:
-            print(f"[{self.name}] Persisting {len(daily_sightings)} sightings...")
+            self.logger.info(f"Persisting {len(daily_sightings)} sightings...")
             async with get_db_session() as session:
                 await insert_sightings(session, daily_sightings)
-            print(
-                f"[{self.name}] Successfully persisted {len(daily_sightings)} sightings"
+            self.logger.info(
+                f"Successfully persisted {len(daily_sightings)} sightings"
             )
 
         return daily_sightings
@@ -159,7 +159,7 @@ class IslandPackersScraper(BaseScraper):
         rows = list(reader)
 
         if len(rows) < 2:
-            print(f"[{self.name}] CSV has insufficient rows")
+            self.logger.info(f"CSV has insufficient rows")
             return sightings
 
         header_line = None
@@ -172,11 +172,11 @@ class IslandPackersScraper(BaseScraper):
                 break
 
         if not header_line:
-            print(f"[{self.name}] Could not find daily sightings header")
+            self.logger.warning(f"Could not find daily sightings header")
             return sightings
 
         headers = [h.strip().strip('"') for h in header_line]
-        print(f"[{self.name}] Found {len(headers)} columns: {headers}")
+        self.logger.info(f"Found {len(headers)} columns: {headers}")
 
         column_indices = {}
         for i, header in enumerate(headers):
@@ -186,7 +186,7 @@ class IslandPackersScraper(BaseScraper):
                     column_indices[i] = species_name
                     break
 
-        print(f"[{self.name}] Mapped column indices: {column_indices}")
+        self.logger.info(f"Mapped column indices: {column_indices}")
 
         current_year = datetime.now().year
         current_month = datetime.now().month

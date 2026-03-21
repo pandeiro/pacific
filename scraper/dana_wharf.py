@@ -150,25 +150,25 @@ class DanaWharfScraper(BaseScraper):
 
     async def scrape(self) -> List[dict[str, Any]]:
         """Fetch and process whale sightings from Dana Wharf Google Sheet."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f" Starting scrape...")
 
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(f"[{self.name}] Location '{self.location_slug}' not found!")
+            self.logger.info(f" Location '{self.location_slug}' not found!")
             return []
 
-        print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
+        self.logger.info(f" Found location: {location.name} (ID: {location.id})")
 
         csv_content = await self._fetch_csv()
-        print(f"[{self.name}] Fetched CSV ({len(csv_content)} chars)")
+        self.logger.info(f" Fetched CSV ({len(csv_content)} chars)")
 
         rows = self._parse_csv(csv_content)
-        print(f"[{self.name}] Parsed {len(rows)} CSV rows")
+        self.logger.info(f" Parsed {len(rows)} CSV rows")
 
         if not rows:
-            print(f"[{self.name}] No rows found")
+            self.logger.info(f" No rows found")
             return []
 
         sightings = []
@@ -179,13 +179,13 @@ class DanaWharfScraper(BaseScraper):
 
             parsed_dt = parse_date(date_str)
             if not parsed_dt:
-                print(f"[{self.name}] Could not parse date: {date_str}")
+                self.logger.info(f" Could not parse date: {date_str}")
                 continue
 
             sighting_date = parsed_dt.date()
             parsed = parse_sightings_text(sighting_text)
             if not parsed:
-                print(f"[{self.name}] No species found in: {sighting_text[:50]}...")
+                self.logger.info(f" No species found in: {sighting_text[:50]}...")
                 continue
 
             for count, species in parsed:
@@ -203,13 +203,13 @@ class DanaWharfScraper(BaseScraper):
                 }
                 sightings.append(record)
 
-        print(f"[{self.name}] Parsed {len(sightings)} sightings from {len(rows)} rows")
+        self.logger.info(f" Parsed {len(sightings)} sightings from {len(rows)} rows")
 
         if sightings:
-            print(f"[{self.name}] Persisting {len(sightings)} sightings...")
+            self.logger.info(f" Persisting {len(sightings)} sightings...")
             async with get_db_session() as session:
                 await insert_sightings(session, sightings)
-            print(f"[{self.name}] Successfully persisted {len(sightings)} sightings")
+            self.logger.info(f" Successfully persisted {len(sightings)} sightings")
 
         return sightings
 

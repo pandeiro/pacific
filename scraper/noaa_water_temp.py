@@ -35,17 +35,17 @@ class NOAAWaterTempScraper(BaseScraper):
 
     async def scrape(self) -> List[Any]:
         """Fetch and process water temperature data from NOAA CO-OPS API."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f"Starting scrape...")
 
         # Fetch locations with NOAA stations from database
         async with get_db_session() as session:
             locations = await get_locations_with_noaa_stations(session)
 
         if not locations:
-            print(f"[{self.name}] No locations with NOAA stations found in database!")
+            self.logger.warning(f"No locations with NOAA stations found in database!")
             return []
 
-        print(f"[{self.name}] Found {len(locations)} locations with NOAA stations")
+        self.logger.info(f"Found {len(locations)} locations with NOAA stations")
 
         # We'll fetch data for "today" - NOAA returns full day even with partial data
         today = datetime.utcnow().date()
@@ -58,22 +58,22 @@ class NOAAWaterTempScraper(BaseScraper):
         for location in locations:
             station_id = location.noaa_station_id
             try:
-                print(
-                    f"[{self.name}] Fetching data for station {station_id} ({location.slug})"
+                self.logger.info(
+                    f"Fetching data for station {station_id} ({location.slug})"
                 )
 
                 # Fetch today's water temperature readings
                 readings = await self._fetch_water_temp(station_id, today)
 
                 if not readings:
-                    print(
-                        f"[{self.name}] No water temp data available for station {station_id}"
+                    self.logger.info(
+                        f"No water temp data available for station {station_id}"
                     )
                     stations_without_data += 1
                     continue
 
-                print(
-                    f"[{self.name}] Retrieved {len(readings)} readings for station {station_id}"
+                self.logger.info(
+                    f"Retrieved {len(readings)} readings for station {station_id}"
                 )
                 stations_with_data += 1
 
@@ -87,23 +87,23 @@ class NOAAWaterTempScraper(BaseScraper):
                 await asyncio.sleep(1)
 
             except Exception as e:
-                print(
-                    f"[{self.name}] Error fetching data for station {station_id}: {e}"
+                self.logger.info(
+                    f"Error fetching data for station {station_id}: {e}"
                 )
                 # Continue with other stations even if one fails
                 continue
 
         # Persist to database
         if all_records:
-            print(
-                f"[{self.name}] Persisting {len(all_records)} hourly records to database..."
+            self.logger.info(
+                f"Persisting {len(all_records)} hourly records to database..."
             )
             async with get_db_session() as session:
                 await insert_conditions(session, all_records)
-            print(f"[{self.name}] Successfully persisted {len(all_records)} records")
+            self.logger.info(f"Successfully persisted {len(all_records)} records")
 
-        print(
-            f"[{self.name}] Scraped {len(all_records)} hourly averages from "
+        self.logger.info(
+            f"Scraped {len(all_records)} hourly averages from "
             f"{stations_with_data} stations ({stations_without_data} stations without water temp sensors)"
         )
         return all_records
@@ -121,7 +121,7 @@ class NOAAWaterTempScraper(BaseScraper):
             "&application=pacific_dashboard"
         )
 
-        print(f"[{self.name}] Requesting: {url}")
+        self.logger.info(f"Requesting: {url}")
 
         async with httpx.AsyncClient() as client:
             response = await client.get(url)

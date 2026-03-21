@@ -157,39 +157,39 @@ class HarborBreezeScraper(BaseScraper):
 
     async def scrape(self) -> List[dict[str, Any]]:
         """Fetch and process whale sightings from Harbor Breeze website."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f" Starting scrape...")
 
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(f"[{self.name}] Location '{self.location_slug}' not found!")
+            self.logger.info(f" Location '{self.location_slug}' not found!")
             return []
 
-        print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
+        self.logger.info(f" Found location: {location.name} (ID: {location.id})")
 
         html_content = await self._fetch_page_playwright()
         if not html_content:
-            print(f"[{self.name}] Failed to fetch page content")
+            self.logger.info(f" Failed to fetch page content")
             return []
 
-        print(f"[{self.name}] Fetched page ({len(html_content)} chars)")
+        self.logger.info(f" Fetched page ({len(html_content)} chars)")
 
         sighting_texts = self._extract_sightings(html_content)
-        print(f"[{self.name}] Found {len(sighting_texts)} sighting entries")
+        self.logger.info(f" Found {len(sighting_texts)} sighting entries")
 
         if not sighting_texts:
-            print(f"[{self.name}] No sightings found")
+            self.logger.info(f" No sightings found")
             return []
 
         sightings = self._parse_sightings(sighting_texts, location.id)
-        print(f"[{self.name}] Parsed {len(sightings)} individual sightings")
+        self.logger.info(f" Parsed {len(sightings)} individual sightings")
 
         if sightings:
-            print(f"[{self.name}] Persisting {len(sightings)} sightings...")
+            self.logger.info(f" Persisting {len(sightings)} sightings...")
             async with get_db_session() as session:
                 await insert_sightings(session, sightings)
-            print(f"[{self.name}] Successfully persisted {len(sightings)} sightings")
+            self.logger.info(f" Successfully persisted {len(sightings)} sightings")
 
         return sightings
 
@@ -210,7 +210,7 @@ class HarborBreezeScraper(BaseScraper):
 
                 return content
         except Exception as e:
-            print(f"[{self.name}] Playwright fetch failed: {e}")
+            self.logger.info(f" Playwright fetch failed: {e}")
             return ""
 
     def _extract_sightings(self, html_content: str) -> List[tuple[date | None, str]]:

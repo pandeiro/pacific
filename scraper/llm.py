@@ -12,6 +12,9 @@ import re
 from typing import Callable
 
 import httpx
+import structlog
+
+logger = structlog.get_logger("llm")
 
 MODEL_PREFERENCE_LIST = ["llama3.2:1b", "llama3.2:3b"]
 
@@ -69,9 +72,7 @@ class LLMClient:
             if explicit_model:
                 if explicit_model in available_models:
                     self.model = explicit_model
-                    print(
-                        f"[LLMClient] Using explicitly configured model: {self.model}"
-                    )
+                    logger.info("model_selected", model=self.model, mode="explicit")
                 else:
                     raise ValueError(
                         f"LLM_MODEL '{explicit_model}' not found. "
@@ -81,7 +82,7 @@ class LLMClient:
                 for preferred in MODEL_PREFERENCE_LIST:
                     if preferred in available_models:
                         self.model = preferred
-                        print(f"[LLMClient] Auto-selected model: {self.model}")
+                        logger.info("model_selected", model=self.model, mode="auto")
                         return
 
                 raise ValueError(
@@ -91,7 +92,7 @@ class LLMClient:
         except httpx.ConnectError:
             self._llm_available = False
             self.model = None
-            print("[LLMClient] Ollama not reachable, LLM extraction disabled")
+            logger.warning("ollama_unreachable")
         except Exception as e:
             raise ValueError(f"LLM configuration error: {e}")
 
@@ -146,7 +147,7 @@ class LLMClient:
             )
 
         if not self.supports_llm():
-            print("[LLMClient] LLM not available, returning empty dict")
+            logger.warning("llm_not_available", profile=profile, action="fallback")
             if fallback_fn is not None:
                 return fallback_fn(raw_text)
             return {}
@@ -187,14 +188,21 @@ class LLMClient:
             try:
                 return json.loads(content.strip())
             except json.JSONDecodeError as e:
-                print(f"[LLMClient] JSON parse error (profile={profile}): {e}")
-                print(f"[LLMClient] Raw LLM response: {content[:500]}...")
+                logger.error(
+                    "json_parse_error",
+                    profile=profile,
+                    error=str(e),
+                    raw_content=content[:500],
+                )
                 raise
         except Exception as e:
-            print(f"[LLMClient] Extraction failed (profile={profile}): {e}")
+            logger.error("extraction_failed", profile=profile, error=str(e))
             if fallback_fn is not None:
                 try:
                     return fallback_fn(raw_text)
                 except Exception as fallback_error:
-                    print(f"[LLMClient] Fallback also failed: {fallback_error}")
+                    logger.error(
+                        "fallback_failed",
+                        error=str(fallback_error),
+                    )
             return {}

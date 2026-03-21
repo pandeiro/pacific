@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from api.database import Location, Tide, SunEvent, Condition, Sighting, Base
+from api.database import Location, Tide, SunEvent, Condition, Sighting, ScrapeLog, Base
 
 # Database URL from environment
 DATABASE_URL = os.getenv(
@@ -350,4 +350,42 @@ async def insert_sightings(session: AsyncSession, records: List[Dict[str, Any]])
             )
             session.add(sighting)
 
+    await session.flush()
+
+
+async def log_scrape_run(
+    session: AsyncSession,
+    scraper_name: str,
+    started_at: datetime,
+    finished_at: datetime,
+    status: str,
+    records_created: int = 0,
+    records_updated: int = 0,
+    records_skipped: int = 0,
+    error_message: str | None = None,
+) -> None:
+    """Insert a scrape_logs entry tracking scraper execution.
+
+    Args:
+        session: Database session
+        scraper_name: Class name of the scraper (e.g., 'NOAATidesScraper')
+        started_at: When the scrape run began (UTC)
+        finished_at: When the scrape run ended (UTC)
+        status: 'success', 'failure', or 'partial'
+        records_created: Count of new records inserted
+        records_updated: Count of existing records updated
+        records_skipped: Count of records skipped (duplicates, out of range)
+        error_message: Error details if status is 'failure'
+    """
+    log_entry = ScrapeLog(
+        scraper_name=scraper_name,
+        started_at=started_at,
+        finished_at=finished_at,
+        status=status,
+        records_created=records_created,
+        records_updated=records_updated,
+        records_skipped=records_skipped,
+        error_message=error_message,
+    )
+    session.add(log_entry)
     await session.flush()

@@ -34,17 +34,17 @@ class NOAATidesScraper(BaseScraper):
 
     async def scrape(self) -> List[Any]:
         """Fetch and process tide data from NOAA CO-OPS API."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f"Starting scrape...")
 
         # Fetch locations with NOAA stations from database
         async with get_db_session() as session:
             locations = await get_locations_with_noaa_stations(session)
 
         if not locations:
-            print(f"[{self.name}] No locations with NOAA stations found in database!")
+            self.logger.warning(f"No locations with NOAA stations found in database!")
             return []
 
-        print(f"[{self.name}] Found {len(locations)} locations with NOAA stations")
+        self.logger.info(f"Found {len(locations)} locations with NOAA stations")
 
         # Calculate date range for predictions (today - 1 day to today + 6 days)
         # This gives us a week of data centered around today
@@ -61,23 +61,23 @@ class NOAATidesScraper(BaseScraper):
 
             # Skip if we've already processed this station
             if station_id in processed_stations:
-                print(
-                    f"[{self.name}] Skipping duplicate station {station_id} ({location.slug}) - already processed"
+                self.logger.info(
+                    f"Skipping duplicate station {station_id} ({location.slug}) - already processed"
                 )
                 continue
 
             processed_stations.add(station_id)
             try:
-                print(
-                    f"[{self.name}] Fetching data for station {station_id} ({location.slug})"
+                self.logger.info(
+                    f"Fetching data for station {station_id} ({location.slug})"
                 )
 
                 # Fetch predictions
                 predictions = await self._fetch_predictions(
                     station_id, start_date, end_date
                 )
-                print(
-                    f"[{self.name}] Retrieved {len(predictions)} predictions for station {station_id}"
+                self.logger.info(
+                    f"Retrieved {len(predictions)} predictions for station {station_id}"
                 )
 
                 # Process predictions into records
@@ -88,21 +88,21 @@ class NOAATidesScraper(BaseScraper):
                 await asyncio.sleep(1)
 
             except Exception as e:
-                print(
-                    f"[{self.name}] Error fetching data for station {station_id}: {e}"
+                self.logger.info(
+                    f"Error fetching data for station {station_id}: {e}"
                 )
                 # Continue with other stations even if one fails
                 continue
 
         # Persist to database
         if all_records:
-            print(f"[{self.name}] Persisting {len(all_records)} records to database...")
+            self.logger.info(f"Persisting {len(all_records)} records to database...")
             async with get_db_session() as session:
                 await insert_tides(session, all_records)
-            print(f"[{self.name}] Successfully persisted {len(all_records)} records")
+            self.logger.info(f"Successfully persisted {len(all_records)} records")
 
-        print(
-            f"[{self.name}] Scraped {len(all_records)} tide events from {len(locations)} stations"
+        self.logger.info(
+            f"Scraped {len(all_records)} tide events from {len(locations)} stations"
         )
         return all_records
 
@@ -118,7 +118,7 @@ class NOAATidesScraper(BaseScraper):
             "&application=pacific_dashboard&format=json"
         )
 
-        print(f"[{self.name}] Requesting: {url}")
+        self.logger.info(f"Requesting: {url}")
 
         async with httpx.AsyncClient() as client:
             response = await client.get(url)

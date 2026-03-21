@@ -66,31 +66,31 @@ class DaveysLockerScraper(BaseScraper):
 
     async def scrape(self) -> list[dict[str, Any]]:
         """Fetch and process whale sightings from Davey's Locker website."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f"Starting scrape...")
 
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(
-                f"[{self.name}] Location '{self.location_slug}' not found in database!"
+            self.logger.info(
+                f"Location '{self.location_slug}' not found in database!"
             )
             return []
 
-        print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
+        self.logger.info(f"Found location: {location.name} (ID: {location.id})")
 
         html_content = await self._fetch_page()
-        print(f"[{self.name}] Fetched page ({len(html_content)} bytes)")
+        self.logger.info(f"Fetched page ({len(html_content)} bytes)")
 
         rows = self._parse_table(html_content)
-        print(f"[{self.name}] Found {len(rows)} table rows")
+        self.logger.info(f"Found {len(rows)} table rows")
 
         sightings = []
         scrape_timestamp = datetime.now(timezone.utc)
         for date_str, mammals_text in rows:
             date_dt = parse_date(date_str)
             if not date_dt:
-                print(f"[{self.name}] Could not parse date: {date_str}")
+                self.logger.warning(f"Could not parse date: {date_str}")
                 continue
 
             sighting_date = date_dt.date()
@@ -111,13 +111,13 @@ class DaveysLockerScraper(BaseScraper):
                 }
                 sightings.append(record)
 
-        print(f"[{self.name}] Parsed {len(sightings)} sightings from {len(rows)} rows")
+        self.logger.info(f"Parsed {len(sightings)} sightings from {len(rows)} rows")
 
         if sightings:
-            print(f"[{self.name}] Persisting {len(sightings)} sightings to database...")
+            self.logger.info(f"Persisting {len(sightings)} sightings to database...")
             async with get_db_session() as session:
                 await insert_sightings(session, sightings)
-            print(f"[{self.name}] Successfully persisted {len(sightings)} sightings")
+            self.logger.info(f"Successfully persisted {len(sightings)} sightings")
 
         return sightings
 
@@ -145,7 +145,7 @@ class DaveysLockerScraper(BaseScraper):
         soup = BeautifulSoup(html_content, "html.parser")
         table = soup.find("table")
         if not table:
-            print(f"[{self.name}] No table found in page")
+            self.logger.warning(f"No table found in page")
             return []
 
         rows = []

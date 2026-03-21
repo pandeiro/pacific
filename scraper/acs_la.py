@@ -292,36 +292,36 @@ class ACSLAScraper(BaseScraper):
 
     async def scrape(self) -> List[dict[str, Any]]:
         """Fetch and process gray whale census data from ACS-LA website."""
-        print(f"[{self.name}] Starting scrape...")
+        self.logger.info(f"Starting scrape...")
 
         if not is_gray_whale_season():
-            print(f"[{self.name}] Outside gray whale season (Dec-May), skipping scrape")
+            self.logger.info(f"Outside gray whale season (Dec-May), skipping scrape")
             return []
 
         async with get_db_session() as session:
             location = await get_location_by_slug(session, self.location_slug)
 
         if not location:
-            print(f"[{self.name}] Location '{self.location_slug}' not found!")
+            self.logger.info(f"Location '{self.location_slug}' not found!")
             return []
 
-        print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
+        self.logger.info(f"Found location: {location.name} (ID: {location.id})")
 
         html_content = await self._fetch_page()
-        print(f"[{self.name}] Fetched page ({len(html_content)} bytes)")
+        self.logger.info(f"Fetched page ({len(html_content)} bytes)")
 
         posts = self._extract_facebook_posts(html_content)
-        print(f"[{self.name}] Found {len(posts)} Facebook posts")
+        self.logger.info(f"Found {len(posts)} Facebook posts")
 
         if not posts:
-            print(f"[{self.name}] No posts found")
+            self.logger.warning(f"No posts found")
             return []
 
         latest_post = posts[0]
-        print(f"[{self.name}] Processing latest post ({len(latest_post)} chars)")
+        self.logger.info(f"Processing latest post ({len(latest_post)} chars)")
 
         counts = extract_structured_counts(latest_post)
-        print(f"[{self.name}] Regex counts: {counts}")
+        self.logger.info(f"Regex counts: {counts}")
 
         llm_sightings: dict[str, int] = {}
         try:
@@ -333,20 +333,20 @@ class ACSLAScraper(BaseScraper):
                 )
                 if llm_result:
                     llm_sightings = parse_llm_sightings(llm_result)
-                    print(f"[{self.name}] LLM sightings: {llm_sightings}")
+                    self.logger.info(f"LLM sightings: {llm_sightings}")
                 else:
-                    print(f"[{self.name}] LLM returned empty result")
+                    self.logger.info(f"LLM returned empty result")
         except Exception as e:
-            print(f"[{self.name}] LLM extraction skipped: {e}")
+            self.logger.info(f"LLM extraction skipped: {e}")
 
         timestamp = datetime.now(timezone.utc)
         sighting_date = parse_date(latest_post)
         if sighting_date:
-            print(f"[{self.name}] Parsed sighting date: {sighting_date}")
+            self.logger.info(f"Parsed sighting date: {sighting_date}")
         else:
             sighting_date = timestamp.date()
-            print(
-                f"[{self.name}] Could not parse date from post, "
+            self.logger.info(
+                f"Could not parse date from post, "
                 f"falling back to scrape date: {sighting_date}"
             )
 
@@ -412,12 +412,12 @@ class ACSLAScraper(BaseScraper):
                 )
 
         if sightings:
-            print(f"[{self.name}] Persisting {len(sightings)} sightings...")
+            self.logger.info(f"Persisting {len(sightings)} sightings...")
             async with get_db_session() as session:
                 await insert_sightings(session, sightings)
-            print(f"[{self.name}] Successfully persisted {len(sightings)} sightings")
+            self.logger.info(f"Successfully persisted {len(sightings)} sightings")
         else:
-            print(f"[{self.name}] No counts found in post")
+            self.logger.warning(f"No counts found in post")
 
         return sightings
 

@@ -139,6 +139,22 @@ class Sighting(Base):
     meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
 
 
+class ScrapeLog(Base):
+    """Scraper execution audit log model."""
+
+    __tablename__ = "scrape_logs"
+
+    id = Column(Integer, primary_key=True)
+    scraper_name = Column(Text, nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True))
+    status = Column(Text, nullable=False)
+    records_created = Column(Integer, nullable=False, server_default=text("0"))
+    records_updated = Column(Integer, nullable=False, server_default=text("0"))
+    records_skipped = Column(Integer, nullable=False, server_default=text("0"))
+    error_message = Column(Text)
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session."""
     async with AsyncSessionLocal() as session:

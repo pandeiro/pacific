@@ -83,7 +83,7 @@ class INatScraper(BaseScraper):
 
     async def scrape(self) -> list[dict[str, Any]]:
         prior = self._prior_day()
-        print(f"[{self.name}] Starting scrape for {prior}...")
+        self.logger.info(f"Starting scrape for {prior}...")
 
         taxon_ids = ",".join(str(tid) for tid, _ in INAT_TAXA)
         d1 = prior.isoformat()
@@ -103,7 +103,7 @@ class INatScraper(BaseScraper):
             "per_page": PAGE_SIZE,
         }
 
-        print(f"[{self.name}] Fetching observations for {d1}, taxon_ids={taxon_ids}")
+        self.logger.info(f"Fetching observations for {d1}, taxon_ids={taxon_ids}")
 
         all_observations = []
         page = 1
@@ -120,8 +120,8 @@ class INatScraper(BaseScraper):
 
             all_observations.extend(results)
             total = data.get("total_results", 0)
-            print(
-                f"[{self.name}] Page {page}: {len(results)} obs "
+            self.logger.info(
+                f"Page {page}: {len(results)} obs "
                 f"(total fetched: {len(all_observations)} / {total})"
             )
             if len(all_observations) >= total:
@@ -130,20 +130,20 @@ class INatScraper(BaseScraper):
             page += 1
             await asyncio.sleep(1)
 
-        print(f"[{self.name}] Fetched {len(all_observations)} observations")
+        self.logger.info(f"Fetched {len(all_observations)} observations")
 
         if not all_observations:
-            print(f"[{self.name}] No observations for {prior}, skipping.")
+            self.logger.warning(f"No observations for {prior}, skipping.")
             return []
 
         buckets = await self._aggregate(all_observations, prior)
-        print(f"[{self.name}] Aggregated into {len(buckets)} location/species buckets")
+        self.logger.info(f"Aggregated into {len(buckets)} location/species buckets")
 
         if buckets:
-            print(f"[{self.name}] Persisting {len(buckets)} aggregated rows...")
+            self.logger.info(f"Persisting {len(buckets)} aggregated rows...")
             async with get_db_session() as session:
                 await insert_sightings(session, buckets)
-            print(f"[{self.name}] Successfully persisted {len(buckets)} rows")
+            self.logger.info(f"Successfully persisted {len(buckets)} rows")
 
         return buckets
 
