@@ -112,10 +112,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.25rem;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 0.5rem 0.75rem;
-  border-radius: calc(var(--border-radius) / 2);
-  backdrop-filter: blur(8px);
 }
 
 .live-cam__viewport {
