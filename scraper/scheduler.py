@@ -82,8 +82,8 @@ def parse_cron(cron_expr: str) -> dict:
     }
 
 
-async def run_scraper(scraper_class):
-    """Execute a single scraper run."""
+async def run_scraper(scraper_class, retry_count=0, max_retries=3):
+    """Execute a single scraper run with retry logic."""
     scraper_name = scraper_class.__name__
     print(f"[Scheduler] Running {scraper_name}...")
 
@@ -91,9 +91,24 @@ async def run_scraper(scraper_class):
         scraper = scraper_class()
         records = await scraper.run()
         print(f"[Scheduler] {scraper_name} completed: {len(records)} records scraped")
+        return True  # Success
     except Exception as e:
         print(f"[Scheduler] {scraper_name} failed: {e}")
         # Don't re-raise - we want the scheduler to continue even if one scraper fails
+
+        # Retry logic for transient failures (like database not ready)
+        if retry_count < max_retries:
+            retry_delay = 60 * (retry_count + 1)  # Exponential backoff: 60s, 120s, 180s
+            print(
+                f"[Scheduler] Will retry {scraper_name} in {retry_delay}s (attempt {retry_count + 1}/{max_retries})"
+            )
+            await asyncio.sleep(retry_delay)
+            return await run_scraper(scraper_class, retry_count + 1, max_retries)
+        else:
+            print(
+                f"[Scheduler] {scraper_name} failed after {max_retries} retries, giving up"
+            )
+            return False  # Failed after retries
 
 
 async def main():
@@ -145,7 +160,11 @@ async def main():
     # Run immediately on startup for testing (optional - remove in production)
     print("[Scheduler] Running all scrapers once on startup...")
     for scraper_class, _ in scrapers:
-        await run_scraper(scraper_class)
+        success = await run_scraper(scraper_class)
+        if not success:
+            print(
+                f"[Scheduler] Warning: {scraper_class.__name__} failed on startup and could not be retried"
+            )
 
     print("[Scheduler] Scheduler is running. Press Ctrl+C to exit.")
     print("=" * 60)

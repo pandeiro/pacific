@@ -104,11 +104,66 @@ class SouthCoastDiversScraper(BaseScraper):
 
         try:
             async with LLMClient() as llm_client:
+
+                def fallback_extraction(text: str) -> dict:
+                    """Fallback regex extraction for visibility and swell."""
+                    import re
+
+                    result = {"visibility": None, "swell": None}
+
+                    # Extract visibility (viz, vis, visibility)
+                    viz_patterns = [
+                        r"(?:viz|vis|visibility)\s*(?:is|:)?\s*(\d+(?:\s*-\s*\d+)?)\s*(?:feet|ft)",
+                        r"(\d+(?:\s*-\s*\d+)?)\s*(?:feet|ft)\s*(?:viz|vis|visibility)",
+                        r"(?:estimate|see|bottom)\s*(?:for|at)?\s*(\d+(?:\s*-\s*\d+)?)\s*(?:feet|ft)",
+                    ]
+                    for pattern in viz_patterns:
+                        match = re.search(pattern, text, re.IGNORECASE)
+                        if match:
+                            result["visibility"] = match.group(1).strip()
+                            break
+
+                    # Extract swell/surf
+                    swell_patterns = [
+                        r"(?:swell|surf)\s*(?:is|:)?\s*(\d+(?:\s*-\s*\d+)?(?:\+)?)\s*(?:feet|ft)",
+                        r"(\d+(?:\s*-\s*\d+)?(?:\+)?)\s*(?:feet|ft)\s*(?:swell|surf)",
+                        r"(?:surf|waves?)\s*(?:is|:)?\s*(\d+(?:\s*-\s*\d+)?(?:\+)?)",
+                    ]
+                    for pattern in swell_patterns:
+                        match = re.search(pattern, text, re.IGNORECASE)
+                        if match:
+                            result["swell"] = match.group(1).strip()
+                            break
+
+                    return result
+
                 conditions_data = await llm_client.extract(
                     dive_report_text, profile="dive-conditions"
                 )
                 print(f"[{self.name}] LLM extraction: {conditions_data}")
 
+                # Validate LLM response format and use fallback if needed
+                valid_format = isinstance(conditions_data, dict) and (
+                    "visibility" in conditions_data or "swell" in conditions_data
+                )
+
+                # Check if values are valid (not nested dicts)
+                if valid_format:
+                    vis = conditions_data.get("visibility")
+                    swell = conditions_data.get("swell")
+                    if (vis is not None and not isinstance(vis, (str, int, float))) or (
+                        swell is not None and not isinstance(swell, (str, int, float))
+                    ):
+                        valid_format = False
+
+                if not valid_format:
+                    print(
+                        f"[{self.name}] LLM returned invalid format, using fallback extraction"
+                    )
+                    conditions_data = fallback_extraction(dive_report_text)
+                    print(f"[{self.name}] Fallback extraction: {conditions_data}")
+
+                # Process the extraction results
                 if conditions_data is None or not isinstance(conditions_data, dict):
                     print(
                         f"[{self.name}] ERROR: LLM returned invalid response type: {type(conditions_data)}"
@@ -128,22 +183,6 @@ class SouthCoastDiversScraper(BaseScraper):
                     vis_range = conditions_data.get("visibility")
                     swell_range = conditions_data.get("swell")
                     dive_report_id = records[0].get("id") if records else None
-
-                    if vis_range and not isinstance(vis_range, (str, int, float)):
-                        print(
-                            f"[{self.name}] ERROR: visibility value has unexpected type: {type(vis_range)}"
-                        )
-                        print(f"[{self.name}] Raw visibility value: {vis_range}")
-                        print(f"[{self.name}] Dive report ID: {dive_report_id}")
-                        vis_range = None
-
-                    if swell_range and not isinstance(swell_range, (str, int, float)):
-                        print(
-                            f"[{self.name}] ERROR: swell value has unexpected type: {type(swell_range)}"
-                        )
-                        print(f"[{self.name}] Raw swell value: {swell_range}")
-                        print(f"[{self.name}] Dive report ID: {dive_report_id}")
-                        swell_range = None
         except Exception as e:
             print(f"[{self.name}] ERROR: LLM extraction failed: {e}")
             print(f"[{self.name}] Dive report will be archived without extraction")

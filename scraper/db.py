@@ -163,6 +163,7 @@ async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]
             existing_condition.source = record.get("source", "noaa")
             existing_condition.source_url = record.get("source_url")
             existing_condition.raw_text = record.get("raw_text")
+            existing_condition.meta = record.get("meta", {})
         else:
             # Create new record
             condition = Condition(
@@ -174,6 +175,7 @@ async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]
                 source=record.get("source", "noaa"),
                 source_url=record.get("source_url"),
                 raw_text=record.get("raw_text"),
+                meta=record.get("meta", {}),
             )
             session.add(condition)
 

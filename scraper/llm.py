@@ -25,8 +25,8 @@ PROFILES = {
         "temperature": 0.0,
     },
     "dive-conditions": {
-        "system": "Return only valid JSON.",
-        "user_template": 'Extract from dive report. Find visibility (viz, vis, visibility) and swell/surf heights in feet. Return JSON: {{"visibility": "number or range", "swell": "number or range"}}. Use null if not found.\n\n{text}',
+        "system": "Return only valid JSON. Do not nest objects.",
+        "user_template": 'Extract from dive report. Find visibility (viz, vis, visibility) and swell/surf heights in feet. Return EXACTLY this JSON format with no nesting: {{"visibility": "number or range like 10-15", "swell": "number or range like 3-5"}}. Use null if not found. Do NOT return nested objects.\n\n{text}',
         "temperature": 0.0,
     },
 }
