@@ -37,7 +37,7 @@ jobs:
 
       - name: Test frontend
         working-directory: frontend
-        run: npm run test || true
+        run: npm run test
 
       - name: Setup Python
         uses: actions/setup-python@v5

@@ -1,12 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import './WildlifeTile.css';
-import type { SightingRecord, TaxonGroup } from '../../types';
+import type { TaxonGroup } from '../../types';
 import { useWildlife } from '../../hooks/useWildlife';
+import { useWildlifeAggregation } from '../../hooks/useWildlifeAggregation';
+import type { AggregatedSpecies } from '../../hooks/useWildlifeAggregation';
 import { getSpeciesEmoji } from '../../utils/speciesEmoji';
-
-interface GroupedSightings {
-  [timeLabel: string]: SightingRecord[];
-}
 
 const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
   inaturalist: { label: 'iNat', color: 'badge--green' },
@@ -21,43 +19,6 @@ const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
 
 const TAXON_GROUPS: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bird', 'other'];
 
-function formatRecency(sightingDate: string | null): string {
-  if (!sightingDate) return '';
-  
-  // Parse YYYY-MM-DD as local date (not UTC which causes timezone shifts)
-  const [year, month, day] = sightingDate.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-  });
-  return formatter.format(date);
-}
-
-function getTimeGroup(sightingDate: string | null): string | null {
-  if (!sightingDate) return null;
-  
-  // Parse YYYY-MM-DD as local date (not UTC which causes timezone shifts)
-  const [year, month, day] = sightingDate.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  const now = new Date();
-  const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffDays = Math.floor((currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return null;  // Future dates - don't show
-  if (diffDays <= 1) {
-    return 'Last Day';
-  }
-  if (diffDays <= 7) {
-    return 'Last Week';
-  }
-  if (diffDays <= 50) {
-    return 'Older';
-  }
-  return null;  // Older than 50 days - don't show
-}
-
 export function WildlifeTile() {
   const { sightings, isLoading, error } = useWildlife();
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,52 +27,16 @@ export function WildlifeTile() {
   );
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
 
-  // Filter by search and taxon groups
-  const filteredSightings = useMemo(() => {
-    if (!sightings) return [];
+  const rawSightings = sightings?.sightings ?? [];
 
-    return sightings.sightings.filter((s) => {
-      // Taxon group filter
-      if (!activeFilters.has(s.taxon_group)) {
-        return false;
-      }
+  const aggregation = useWildlifeAggregation(rawSightings, {
+    searchQuery,
+    activeTaxonGroups: activeFilters,
+    selectedSources,
+  });
 
-      // Source filter
-      if (selectedSources.size > 0 && !selectedSources.has(s.source)) {
-        return false;
-      }
-
-      // Search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return (
-          s.species.toLowerCase().includes(query) ||
-          (s.location_name?.toLowerCase().includes(query) || false) ||
-          s.source.toLowerCase().includes(query)
-        );
-      }
-
-      return true;
-    });
-  }, [sightings, activeFilters, selectedSources, searchQuery]);
-
-  // Group by recency
-  const groupedSightings = useMemo(() => {
-    const groups: GroupedSightings = {
-      'Last Day': [],
-      'Last Week': [],
-      'Older': [],
-    };
-
-    filteredSightings.forEach((s) => {
-      const group = getTimeGroup(s.sighting_date);
-      if (group && group in groups) {
-        groups[group].push(s);
-      }
-    });
-
-    return groups;
-  }, [filteredSightings]);
+  const { timeBlocks } = aggregation;
+  const hasResults = timeBlocks.length > 0;
 
   const toggleTaxonGroup = (group: TaxonGroup) => {
     const newFilters = new Set(activeFilters);
@@ -132,8 +57,6 @@ export function WildlifeTile() {
     }
     setSelectedSources(newSources);
   };
-
-  const hasResults = filteredSightings.length > 0;
 
   return (
     <div className="tile wildlife-tile">
@@ -180,61 +103,70 @@ export function WildlifeTile() {
           <div className="wildlife-tile__status">No sightings reported in the last 7 days.</div>
         )}
 
-        {/* Sightings list, grouped by recency */}
+        {/* Aggregated sightings, grouped by recency */}
         {!isLoading && !error && hasResults && (
           <div className="sightings-container">
-            {['Last Day', 'Last Week', 'Older'].map((timeLabel) => {
-              const group = groupedSightings[timeLabel];
-              if (group.length === 0) return null;
-
-              return (
-                <div key={timeLabel} className="sightings-group">
-                  <div className="sightings-group__header">{timeLabel}</div>
-                  <div className="sightings-list">
-                    {group.map((sighting) => (
-                      <div key={sighting.id} className="sighting-item">
-                        <span className="sighting-item__emoji">
-                          {getSpeciesEmoji(sighting.species)}
-                        </span>
-                        <div className="sighting-item__info">
-                          <div className="sighting-item__species">
-                            {sighting.species}
-                            {sighting.count && sighting.count > 1 && (
-                              <span className="sighting-item__count">
-                                ×{sighting.count}
-                              </span>
-                            )}
-                          </div>
-                          <div className="sighting-item__meta">
-                            {sighting.location_name && (
-                              <>
-                                <span>{sighting.location_name}</span>
-                                <span className="sighting-item__dot">·</span>
-                              </>
-                            )}
-                            <span className="sighting-item__time">
-                              {formatRecency(sighting.sighting_date)}
-                            </span>
-                            <span className="sighting-item__dot">·</span>
-                            <button
-                              className={`source-badge ${
-                                SOURCE_BADGES[sighting.source]?.color || 'badge--gray'
-                              }`}
-                              onClick={() => toggleSourceFilter(sighting.source)}
-                              title={`Filter by ${sighting.source}`}
-                            >
-                              {SOURCE_BADGES[sighting.source]?.label || sighting.source}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            {timeBlocks.map((block) => (
+              <div key={block.label} className="sightings-group">
+                <div className="sightings-group__header">{block.label}</div>
+                <div className="sightings-list">
+                  {block.species.map((sp) => (
+                    <SpeciesRow
+                      key={`${block.label}-${sp.species}`}
+                      species={sp}
+                      onSourceClick={toggleSourceFilter}
+                    />
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SpeciesRow({
+  species: sp,
+  onSourceClick,
+}: {
+  species: AggregatedSpecies;
+  onSourceClick: (source: string) => void;
+}) {
+  return (
+    <div className="species-row">
+      <div className="species-row__main">
+        <span className="species-row__emoji">
+          {getSpeciesEmoji(sp.species)}
+        </span>
+        <div className="species-row__info">
+          <div className="species-row__name">
+            {sp.species}
+            {sp.countLabel && (
+              <span className="species-row__count">{sp.countLabel}</span>
+            )}
+          </div>
+          {sp.locations.length > 0 && (
+            <div className="species-row__locations">
+              {sp.locations.join(' · ')}
+            </div>
+          )}
+          {sp.sources.length > 0 && (
+            <div className="species-row__sources">
+              {sp.sources.map((src) => (
+                <button
+                  key={src}
+                  className={`source-badge ${SOURCE_BADGES[src]?.color || 'badge--gray'}`}
+                  onClick={() => onSourceClick(src)}
+                  title={`Filter by ${src}`}
+                >
+                  {SOURCE_BADGES[src]?.label || src}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
