@@ -2,7 +2,7 @@
   height: 100vh;
   display: grid;
   grid-template-columns: 300px 1fr 320px;
-  grid-template-rows: 1fr 140px;
+  grid-template-rows: 1fr 100px;
   gap: var(--tile-gap);
   padding: var(--tile-gap);
   overflow: hidden;
@@ -195,9 +195,25 @@
 .wildlife-intel,
 .tides-sun,
 .drive-times,
-.seasonal-timeline {
+.seasonal-timeline,
+.sun-tile,
+.water-temps,
+.visibility,
+.tides-tile {
   min-height: unset;
 }
+
+/* Proportional flex: center column */
+.activity-scores { flex: 3; }
+.wildlife-intel  { flex: 4; }
+.live-cam        { flex: 2; }
+.drive-times     { flex: 2; }
+
+/* Proportional flex: right column */
+.sun-tile        { flex: 1; }
+.water-temps     { flex: 2; }
+.visibility      { flex: 1; }
+.tides-tile      { flex: 3; }
 
 /* Responsive */
 @media (max-width: 1200px) {
