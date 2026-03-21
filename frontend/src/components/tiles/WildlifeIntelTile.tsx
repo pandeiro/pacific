@@ -23,26 +23,9 @@ const TAXON_GROUPS: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bi
 
 function formatRecency(timestamp: string): string {
   const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-  if (diffHours < 2) {
-    return 'Just now';
-  }
-  if (diffHours < 24) {
-    const hours = Math.floor(diffHours);
-    return `${hours}h ago`;
-  }
-  if (diffDays < 2) {
-    return 'Yesterday';
-  }
   
-  // Short date format (e.g., "Mon Mar 14")
   const formatter = new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
+    month: 'numeric',
     day: 'numeric',
   });
   return formatter.format(date);
