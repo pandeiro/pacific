@@ -37,8 +37,18 @@ export function LiveCamTile({ onLocationChange }: LiveCamTileProps) {
           <span className="tile__title-icon">📹</span>
           Live
         </div>
-        {activeCam && (
-          <span className="live-cam__source">{activeCam.source_name}</span>
+        {cams.length > 0 && (
+          <select
+            className="live-cam__dropdown"
+            value={activeCam?.id ?? cams[0]?.id}
+            onChange={(e) => setActiveCamId(Number(e.target.value))}
+          >
+            {cams.map((cam) => (
+              <option key={cam.id} value={cam.id}>
+                {cam.name}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 
@@ -58,7 +68,6 @@ export function LiveCamTile({ onLocationChange }: LiveCamTileProps) {
         )}
 
         {!isLoading && !error && activeCam && (
-          <>
             <iframe
               key={activeCam.id}
               className="live-cam__iframe"
@@ -67,35 +76,8 @@ export function LiveCamTile({ onLocationChange }: LiveCamTileProps) {
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-            <div className="live-cam__overlay">
-              <span className="live-cam__live-badge">
-                <span className="live-cam__live-dot" />
-                LIVE
-              </span>
-              <div className="live-cam__info">
-                <span className="live-cam__cam-name">{activeCam.name}</span>
-                {activeCam.location_name && (
-                  <span className="live-cam__location-badge">{activeCam.location_name}</span>
-                )}
-              </div>
-            </div>
-          </>
         )}
       </div>
-
-      {cams.length > 0 && (
-        <div className="live-cam__selector">
-          {cams.map((cam) => (
-            <button
-              key={cam.id}
-              className={`live-cam__option ${cam.id === (activeCam?.id ?? cams[0]?.id) ? 'live-cam__option--active' : ''}`}
-              onClick={() => setActiveCamId(cam.id)}
-            >
-              {cam.name}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
