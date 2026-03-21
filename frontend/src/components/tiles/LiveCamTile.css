@@ -1,5 +1,71 @@
 .live-cam {
   min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.live-cam__source {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* Video container fills available flex space */
+.live-cam__video-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+/* iframe fills video container, preserves aspect ratio */
+.live-cam__iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: none;
+}
+
+/* Placeholder for loading/error states */
+.live-cam__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.live-cam__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--glass-border);
+  border-top-color: var(--glow-cyan);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.live-cam__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.live-cam__icon {
+  font-size: 2rem;
 }
 
 .live-cam__viewport {
@@ -32,79 +98,28 @@
   text-transform: uppercase;
 }
 
-.live-cam__overlay {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(5, 10, 20, 0.8);
-  padding: 0.375rem 0.75rem;
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
-}
-
-.live-cam__live-badge {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--score-poor);
-  letter-spacing: 0.1em;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.live-cam__live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--score-poor);
-  animation: blink 1.5s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.live-cam__cam-name {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  color: var(--text-secondary);
-}
-
-.live-cam__selector {
-  margin-top: 0.75rem;
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-}
-
-.live-cam__option {
-  flex-shrink: 0;
-  padding: 0.5rem 0.75rem;
-  background: rgba(10, 22, 40, 0.5);
+/* Cam selector dropdown in header */
+.live-cam__dropdown {
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.live-cam__option:hover {
-  background: rgba(13, 59, 76, 0.6);
-  border-color: var(--teal-glow);
+  border-radius: calc(var(--border-radius) / 2);
   color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color var(--transition-fast);
+  appearance: auto;
 }
 
-.live-cam__option--active {
-  background: rgba(0, 212, 170, 0.15);
+.live-cam__dropdown:hover {
+  border-color: var(--teal-glow);
+}
+
+.live-cam__dropdown:focus {
+  outline: none;
   border-color: var(--glow-cyan);
-  color: var(--glow-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.2);
 }
