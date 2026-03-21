@@ -4,6 +4,12 @@
   flex-direction: column;
 }
 
+@media (max-width: 1024px) {
+  .wildlife-tile {
+    max-height: 75vh;
+  }
+}
+
 /* ── Header: gear button ─────────────────────────────────────────────── */
 
 .wildlife-tile__gear {
