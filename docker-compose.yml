@@ -47,6 +47,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD:-password}@postgres:5432/pacifica
       ENVIRONMENT: ${ENVIRONMENT:-development}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - pacifica
     depends_on:
