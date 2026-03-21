@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import './Dashboard.css';
 import { MapTile } from './tiles/MapTile';
-import { ActivityScoresTile } from './tiles/ActivityScoresTile';
 import { LiveCamTile } from './tiles/LiveCamTile';
 import { WaterTempsTile } from './tiles/WaterTempsTile';
 import { VisibilityTile } from './tiles/VisibilityTile';
@@ -27,7 +26,6 @@ export function Dashboard() {
         </div>
         
         <div className="dashboard__center">
-          <ActivityScoresTile />
           <WildlifeTile />
           <LiveCamTile />
           <DriveTimesTile />

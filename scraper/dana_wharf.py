@@ -21,9 +21,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from base import BaseScraper
     from db import get_db_session, get_location_by_slug, insert_sightings
+    from utils import normalize_species_text
 except ImportError:
     from scraper.base import BaseScraper
     from scraper.db import get_db_session, get_location_by_slug, insert_sightings
+    from scraper.utils import normalize_species_text
 
 
 DANA_WHARF_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSANLNhgWSp5QjIrnJQZgou2WPVHJM--TTN4zypY5LSSwC_Bc2gHS2laI1zTIod8sFS36feAMr02A5K/pub?gid=33795621&single=true&output=csv"
@@ -120,7 +122,7 @@ def parse_sightings_text(text: str) -> list[tuple[int | None, str]]:
     - "1 mola mola"
     """
     sightings = []
-    text = text.strip()
+    text = normalize_species_text(text.strip())
 
     for pattern, canonical_name in SPECIES_PATTERNS:
         match = re.search(pattern, text, re.IGNORECASE)

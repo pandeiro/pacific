@@ -21,9 +21,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from base import BaseScraper
     from db import get_db_session, get_location_by_slug, insert_sightings
+    from utils import normalize_species_text
 except ImportError:
     from scraper.base import BaseScraper
     from scraper.db import get_db_session, get_location_by_slug, insert_sightings
+    from scraper.utils import normalize_species_text
 
 
 HARBOR_BREEZE_URL = "https://2seewhales.com/whale-sightings-report/"
@@ -110,6 +112,7 @@ def parse_sightings_from_text(text: str) -> List[tuple]:
     - "10 White-Sided Dolphins"
     """
     sightings = []
+    text = normalize_species_text(text)
 
     patterns = [
         (r"(\d[\d,]*)\s+(Gray\s+Whales?)", "Gray Whale"),

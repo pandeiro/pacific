@@ -193,7 +193,7 @@
 .activity-scores,
 .live-cam,
 .conditions,
-.wildlife-intel,
+.wildlife-tile,
 .tides-sun,
 .drive-times,
 .seasonal-timeline,
@@ -205,10 +205,9 @@
 }
 
 /* Proportional flex: center column */
-.activity-scores { flex: 3; }
-.wildlife-intel  { flex: 4; }
-.live-cam        { flex: 2; }
-.drive-times     { flex: 2; }
+.wildlife-tile  { flex: 2; }
+.live-cam        { flex: 1; }
+.drive-times     { flex: 1; }
 
 /* Proportional flex: right column */
 .sun-tile        { flex: 1; }

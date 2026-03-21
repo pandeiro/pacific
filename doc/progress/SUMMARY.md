@@ -3,3 +3,6 @@
 - Fixed visibility tile: metadata persistence, scraper startup retry logic, and LLM extraction fallback
 - Cards 24-25: Implemented Sightings API endpoint (taxon group derivation, species canonicalization) and WildlifeIntelTile component (full-text search, taxon+source filtering, recency grouping, 15-min polling)
 - Fixed Docker networking: added `extra_hosts: host.docker.internal` for Ollama access from containers
+- Fixed mobile viewport overflow: removed horizontal padding on dashboard for screens ≤1024px
+- Fixed wildlife data pipeline: sighting_date in API, proper date parsing, 2-digit year normalization, species typo correction, count accumulation fix
+- Removed Activity Scores tile; re-layout center column with Wildlife Tile at 50%

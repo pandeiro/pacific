@@ -326,6 +326,38 @@ Returns a broad, recent sightings feed intended for client-side filtering.
 
 4. Emoji mapping in frontend (`speciesEmoji.ts`) uses `canonical_species` (lowercase).
 
+### 4.1. Text Normalization (Scraper Layer)
+
+Before species extraction runs, source text is normalized to fix common typos from whale watch operators. This catches misspellings that would otherwise cause data loss (e.g., "Fin Whahles" not matching the `Fin Whale` regex pattern).
+
+**Utility**: `scraper/utils.py` — `normalize_species_text()`
+
+**Pattern**: Compile once, apply on raw text before regex patterns run.
+
+```python
+# Common typos from source data (applied via regex substitution)
+SPECIES_TYPO_MAP = [
+    (r"\bWhahles?\b", "Whales"),
+    (r"\bWhlaes?\b", "Whales"),
+    (r"\bWHales?\b", "Whales"),
+    (r"\bWhaleS\b", "Whales"),
+    (r"\bDOlphins?\b", "Dolphins"),
+    (r"\bDOLPHINS\b", "Dolphins"),
+    (r"\bWhitesided\b", "White-sided"),
+]
+```
+
+**Usage in scrapers**:
+- **Dana Wharf**: `parse_sightings_text()` calls `normalize_species_text()` before running `SPECIES_PATTERNS`
+- **Davey's Locker**: `parse_species_list()` calls `normalize_species_text()` before running `PAT_REGEX`
+- **Harbor Breeze**: `parse_sightings_from_text()` calls `normalize_species_text()` before running species patterns
+- **Island Packers**: Column header matching (no free text parsing — not affected)
+
+**Design choice**: Fix at scrape time rather than API layer because:
+- Typos prevent species extraction entirely (data loss), not just misclassification
+- `raw_text` preserves the original for debugging
+- Downstream regex patterns work correctly on normalized text
+
 ---
 
 ## 5. Wildlife Intel Frontend Tile (Card 25)

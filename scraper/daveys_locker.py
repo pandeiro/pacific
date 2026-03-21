@@ -15,9 +15,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from base import BaseScraper
     from db import get_db_session, get_location_by_slug, insert_sightings
+    from utils import normalize_species_text
 except ImportError:
     from scraper.base import BaseScraper
     from scraper.db import get_db_session, get_location_by_slug, insert_sightings
+    from scraper.utils import normalize_species_text
 
 
 DAVEYS_URL = "https://daveyslocker.com/whale-dolphin-sightings/"
@@ -28,6 +30,7 @@ PAT_REGEX = re.compile(r"(\d+)\s+([A-Za-z][A-Za-z\s\/\-]+?)(?=,\s*\d|$)")
 
 def parse_species_list(text: str) -> list[tuple[int, str]]:
     """Parse '53 Gray Whales, 103 Bottlenose Dolphin' into [(53, 'Gray Whales'), ...]."""
+    text = normalize_species_text(text)
     matches = PAT_REGEX.findall(text)
     results = []
     for count_str, species in matches:
