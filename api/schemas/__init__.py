@@ -108,3 +108,34 @@ class VisibilityResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SightingRecord(BaseModel):
+    """Single wildlife sighting record."""
+
+    id: int
+    timestamp: datetime
+    species: str
+    taxon_group: str
+    count: Optional[int] = None
+    location_id: Optional[int] = None
+    location_name: Optional[str] = None
+    source: str
+    source_url: Optional[str] = None
+    confidence: str
+    raw_text: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True
+
+
+class SightingsResponse(BaseModel):
+    """Response model for sightings endpoint."""
+
+    sightings: list[SightingRecord]
+    total: int
+    days_requested: int
+
+    class Config:
+        from_attributes = True

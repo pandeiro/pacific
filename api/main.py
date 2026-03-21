@@ -8,6 +8,7 @@ from routes.tides import router as tides_router
 from routes.locations import router as locations_router
 from routes.conditions import router as conditions_router
 from routes.sun_events import router as sun_events_router
+from routes.sightings import router as sightings_router
 
 # Configure logging on startup
 configure_logging()
@@ -31,6 +32,7 @@ app.include_router(tides_router)
 app.include_router(locations_router)
 app.include_router(conditions_router)
 app.include_router(sun_events_router)
+app.include_router(sightings_router)
 
 
 @app.get("/api/health")
@@ -43,12 +45,6 @@ async def health_check():
 async def get_version():
     logger.info("Version endpoint called")
     return {"version": APP_VERSION, "service": "pacifica-api", "api_version": "v1"}
-
-
-@app.get("/api/v1/sightings")
-async def get_sightings():
-    logger.info("Sightings endpoint called")
-    return {"message": "Sightings endpoint - stub implementation"}
 
 
 @app.get("/api/v1/activity-scores")
