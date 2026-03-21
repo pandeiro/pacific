@@ -3,14 +3,17 @@ import type { SightingRecord, TaxonGroup } from '../types';
 
 // --- Types ---
 
+export type SortMode = 'count' | 'alpha' | 'recent';
+
 export interface AggregatedSpecies {
   species: string;
   taxonGroup: TaxonGroup;
   count: number;
-  countLabel: string; // e.g. "12+" (max across sources, with '+')
+  countLabel: string; // e.g. "12+" (sum across sources, with '+')
   locations: string[];
   sources: string[];
   sightingDates: string[]; // distinct dates this species appeared
+  latestDate: string | null; // most recent sighting_date for this species
 }
 
 export interface TimeBlock {
@@ -29,6 +32,7 @@ export interface WildlifeFilters {
   searchQuery: string;
   activeTaxonGroups: Set<TaxonGroup>;
   selectedSources: Set<string>;
+  sortBy: SortMode;
 }
 
 // --- Helpers ---
@@ -57,7 +61,7 @@ export function useWildlifeAggregation(
   rawSightings: SightingRecord[],
   filters: WildlifeFilters,
 ): WildlifeAggregation {
-  const { searchQuery, activeTaxonGroups, selectedSources } = filters;
+  const { searchQuery, activeTaxonGroups, selectedSources, sortBy } = filters;
 
   return useMemo(() => {
     // Step 1: Apply filters
@@ -101,10 +105,10 @@ export function useWildlifeAggregation(
       const species: AggregatedSpecies[] = Array.from(speciesMap.entries())
         .map(([, sightings]) => {
           const representative = sightings[0];
-          const maxCount = Math.max(
-            ...sightings.map((s) => s.count ?? 0).filter((c) => c > 0),
-            0,
-          );
+          const sumCount = sightings
+            .map((s) => s.count ?? 0)
+            .filter((c) => c > 0)
+            .reduce((a, b) => a + b, 0);
           const hasAnyCount = sightings.some((s) => s.count != null && s.count > 0);
 
           const locations = [...new Set(
@@ -114,21 +118,32 @@ export function useWildlifeAggregation(
           const sightingDates = [...new Set(
             sightings.map((s) => s.sighting_date).filter(Boolean) as string[],
           )];
+          const latestDate = sightingDates.length > 0
+            ? sightingDates.sort((a, b) => b.localeCompare(a))[0]
+            : null;
 
           return {
             species: representative.species,
             taxonGroup: representative.taxon_group,
-            count: maxCount,
-            countLabel: hasAnyCount ? `${maxCount}+` : '',
+            count: sumCount,
+            countLabel: hasAnyCount ? `${sumCount}+` : '',
             locations,
             sources,
             sightingDates,
+            latestDate,
           };
         })
-        // Sort: highest max-count first, then alphabetical
         .sort((a, b) => {
-          if (b.count !== a.count) return b.count - a.count;
-          return a.species.localeCompare(b.species);
+          switch (sortBy) {
+            case 'alpha':
+              return a.species.localeCompare(b.species);
+            case 'recent':
+              return (b.latestDate ?? '').localeCompare(a.latestDate ?? '') || a.species.localeCompare(b.species);
+            case 'count':
+            default:
+              if (b.count !== a.count) return b.count - a.count;
+              return a.species.localeCompare(b.species);
+          }
         });
 
       return { label, species };
@@ -143,5 +158,5 @@ export function useWildlifeAggregation(
     );
 
     return { timeBlocks, totalRaw, totalFiltered, totalAggregated };
-  }, [rawSightings, searchQuery, activeTaxonGroups, selectedSources]);
+  }, [rawSightings, searchQuery, activeTaxonGroups, selectedSources, sortBy]);
 }

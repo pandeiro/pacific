@@ -7,7 +7,7 @@ import type { SightingRecord, TaxonGroup } from '../types';
 
 const ALL_TAXON: Set<TaxonGroup> = new Set(['whale', 'dolphin', 'shark', 'pinniped', 'bird', 'other']);
 const NO_SOURCES: Set<string> = new Set();
-const NO_FILTER = { searchQuery: '', activeTaxonGroups: ALL_TAXON, selectedSources: NO_SOURCES };
+const NO_FILTER = { searchQuery: '', activeTaxonGroups: ALL_TAXON, selectedSources: NO_SOURCES, sortBy: 'count' as const };
 
 function today(): Date {
   return new Date(2026, 2, 21); // March 21, 2026
@@ -209,10 +209,10 @@ describe('useWildlifeAggregation', () => {
     });
   });
 
-  // ── Count: MAX + suffix ──────────────────────────────────────────────
+  // ── Count: SUM + suffix ──────────────────────────────────────────────
 
   describe('count aggregation', () => {
-    it('uses MAX of counts across sources', () => {
+    it('sums counts across sources', () => {
       const { result } = renderHook(() =>
         useWildlifeAggregation(
           [
@@ -223,8 +223,8 @@ describe('useWildlifeAggregation', () => {
         ),
       );
       const sp = result.current.timeBlocks[0].species[0];
-      expect(sp.count).toBe(12);
-      expect(sp.countLabel).toBe('12+');
+      expect(sp.count).toBe(17);
+      expect(sp.countLabel).toBe('17+');
     });
 
     it('appends + to count label', () => {
@@ -252,7 +252,7 @@ describe('useWildlifeAggregation', () => {
       expect(sp.countLabel).toBe('');
     });
 
-    it('ignores null counts when computing max', () => {
+    it('ignores null counts when summing', () => {
       const { result } = renderHook(() =>
         useWildlifeAggregation(
           [
@@ -350,7 +350,7 @@ describe('useWildlifeAggregation', () => {
   // ── Sorting ──────────────────────────────────────────────────────────
 
   describe('sorting', () => {
-    it('sorts by count descending, then alphabetically', () => {
+    it('sorts by count descending, then alphabetically (default)', () => {
       const { result } = renderHook(() =>
         useWildlifeAggregation(
           [
@@ -362,9 +362,44 @@ describe('useWildlifeAggregation', () => {
         ),
       );
       const names = result.current.timeBlocks[0].species.map((s) => s.species);
-      expect(names[0]).toBe('Minke Whale'); // highest count
-      expect(names[1]).toBe('Fin Whale');   // same count, alphabetically first
+      expect(names[0]).toBe('Minke Whale');
+      expect(names[1]).toBe('Fin Whale');
       expect(names[2]).toBe('Gray Whale');
+    });
+
+    it('sorts alphabetically when sortBy is alpha', () => {
+      const { result } = renderHook(() =>
+        useWildlifeAggregation(
+          [
+            sighting({ species: 'Minke Whale', source: 'iNat', count: 20, sighting_date: dateStr(0), id: 1 }),
+            sighting({ species: 'Fin Whale', source: 'iNat', count: 5, sighting_date: dateStr(0), id: 2 }),
+            sighting({ species: 'Gray Whale', source: 'iNat', count: 10, sighting_date: dateStr(0), id: 3 }),
+          ],
+          { ...NO_FILTER, sortBy: 'alpha' },
+        ),
+      );
+      const names = result.current.timeBlocks[0].species.map((s) => s.species);
+      expect(names).toEqual(['Fin Whale', 'Gray Whale', 'Minke Whale']);
+    });
+
+    it('sorts by most recent sighting when sortBy is recent', () => {
+      // All in same time block to test sort order within block
+      const { result } = renderHook(() =>
+        useWildlifeAggregation(
+          [
+            sighting({ species: 'Fin Whale', source: 'iNat', sighting_date: dateStr(-2), id: 1 }),
+            sighting({ species: 'Gray Whale', source: 'iNat', sighting_date: dateStr(0), id: 2 }),
+            sighting({ species: 'Minke Whale', source: 'iNat', sighting_date: dateStr(-3), id: 3 }),
+          ],
+          { ...NO_FILTER, sortBy: 'recent' },
+        ),
+      );
+      // Gray Whale is in Last Day; Fin Whale and Minke Whale are in Last Week
+      const lastWeek = result.current.timeBlocks.find((b) => b.label === 'Last Week');
+      expect(lastWeek).toBeDefined();
+      const names = lastWeek!.species.map((s) => s.species);
+      expect(names[0]).toBe('Fin Whale');    // -2 days (more recent than -3)
+      expect(names[1]).toBe('Minke Whale');  // -3 days
     });
   });
 
@@ -465,7 +500,7 @@ describe('useWildlifeAggregation', () => {
         ),
       );
       const sp = result.current.timeBlocks[0].species[0];
-      expect(sp.count).toBe(3); // only iNat count, not daveyslocker's 10
+      expect(sp.count).toBe(3); // only iNat's 3, daveyslocker's 10 excluded by filter
       expect(sp.sources).toEqual(['iNat']);
     });
   });

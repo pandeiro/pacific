@@ -1,31 +1,34 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './WildlifeTile.css';
 import type { TaxonGroup } from '../../types';
 import { useWildlife } from '../../hooks/useWildlife';
 import { useWildlifeAggregation } from '../../hooks/useWildlifeAggregation';
-import type { AggregatedSpecies } from '../../hooks/useWildlifeAggregation';
+import type { AggregatedSpecies, SortMode } from '../../hooks/useWildlifeAggregation';
 import { getSpeciesEmoji } from '../../utils/speciesEmoji';
 
 const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
   inaturalist: { label: 'iNat', color: 'badge--green' },
-  daveyslocker: { label: 'Davey\'s', color: 'badge--blue' },
+  daveyslocker: { label: "Davey's", color: 'badge--blue' },
   dana_wharf: { label: 'Dana Wharf', color: 'badge--blue' },
   acs_la: { label: 'ACS-LA', color: 'badge--teal' },
   harbor_breeze: { label: 'H. Breeze', color: 'badge--blue' },
   island_packers: { label: 'Is. Packers', color: 'badge--blue' },
-  whale_alert: { label: 'Whale Alert', color: 'badge--orange' },
-  twitter: { label: 'Twitter', color: 'badge--gray' },
 };
 
-const TAXON_GROUPS: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bird', 'other'];
+const ALL_TAXON: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bird', 'other'];
+const POPULAR_TAXON: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped'];
+const ALL_SOURCES = Object.keys(SOURCE_BADGES);
 
 export function WildlifeTile() {
   const { sightings, isLoading, error } = useWildlife();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<TaxonGroup>>(
-    new Set(TAXON_GROUPS)
+    new Set(ALL_TAXON)
   );
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortMode>('count');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const rawSightings = sightings?.sightings ?? [];
 
@@ -33,10 +36,23 @@ export function WildlifeTile() {
     searchQuery,
     activeTaxonGroups: activeFilters,
     selectedSources,
+    sortBy,
   });
 
   const { timeBlocks } = aggregation;
   const hasResults = timeBlocks.length > 0;
+
+  // Close filter panel on outside click
+  useEffect(() => {
+    if (!filterOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [filterOpen]);
 
   const toggleTaxonGroup = (group: TaxonGroup) => {
     const newFilters = new Set(activeFilters);
@@ -58,41 +74,135 @@ export function WildlifeTile() {
     setSelectedSources(newSources);
   };
 
+  const clearFilters = () => {
+    setSearchQuery('');
+    setActiveFilters(new Set(ALL_TAXON));
+    setSelectedSources(new Set());
+  };
+
+  const activeFilterCount =
+    (selectedSources.size > 0 ? 1 : 0) +
+    (searchQuery ? 1 : 0) +
+    (activeFilters.size < ALL_TAXON.length ? 1 : 0);
+
   return (
     <div className="tile wildlife-tile">
-        <div className="tile__header">
-          <div className="tile__title">
-            <span className="tile__title-icon">🔍</span>
-            Wildlife
-          </div>
+      <div className="tile__header">
+        <div className="tile__title">
+          <span className="tile__title-icon">🔍</span>
+          Wildlife
         </div>
+        <button
+          className={`wildlife-tile__gear ${filterOpen ? 'wildlife-tile__gear--active' : ''}`}
+          onClick={() => setFilterOpen((v) => !v)}
+          title="Filters"
+          aria-label="Toggle filters"
+          aria-expanded={filterOpen}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          {activeFilterCount > 0 && (
+            <span className="wildlife-tile__gear-badge">{activeFilterCount}</span>
+          )}
+        </button>
+      </div>
 
       <div className="tile__content">
-        {/* Search bar */}
-        <div className="wildlife-tile__search">
-          <input
-            type="text"
-            className="wildlife-tile__search-input"
-            placeholder="Search species, location, or source..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        {/* Filters inset panel */}
+        {filterOpen && (
+          <div className="wildlife-filters" ref={filterRef}>
+            <div className="wildlife-filters__search">
+              <input
+                type="text"
+                className="wildlife-tile__search-input"
+                placeholder="Search species, location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
 
-        {/* Taxon filter pills */}
-        <div className="wildlife-tile__filters">
-          {TAXON_GROUPS.map((group) => (
-            <button
-              key={group}
-              className={`wildlife-tile__filter-pill ${
-                activeFilters.has(group) ? 'wildlife-tile__filter-pill--active' : ''
-              }`}
-              onClick={() => toggleTaxonGroup(group)}
-            >
-              {group.charAt(0).toUpperCase() + group.slice(1)}
-            </button>
-          ))}
-        </div>
+            <div className="wildlife-filters__section">
+              <div className="wildlife-filters__label">Popular</div>
+              <div className="wildlife-filters__pills">
+                {POPULAR_TAXON.map((group) => (
+                  <button
+                    key={group}
+                    className={`wildlife-tile__filter-pill ${
+                      activeFilters.has(group) ? 'wildlife-tile__filter-pill--active' : ''
+                    }`}
+                    onClick={() => toggleTaxonGroup(group)}
+                  >
+                    {group.charAt(0).toUpperCase() + group.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="wildlife-filters__section">
+              <div className="wildlife-filters__label">Also</div>
+              <div className="wildlife-filters__pills">
+                {ALL_TAXON.filter((t) => !POPULAR_TAXON.includes(t)).map((group) => (
+                  <button
+                    key={group}
+                    className={`wildlife-tile__filter-pill ${
+                      activeFilters.has(group) ? 'wildlife-tile__filter-pill--active' : ''
+                    }`}
+                    onClick={() => toggleTaxonGroup(group)}
+                  >
+                    {group.charAt(0).toUpperCase() + group.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="wildlife-filters__section">
+              <div className="wildlife-filters__label">Sources</div>
+              <div className="wildlife-filters__pills">
+                {ALL_SOURCES.map((src) => (
+                  <button
+                    key={src}
+                    className={`source-badge ${
+                      SOURCE_BADGES[src]?.color || 'badge--gray'
+                    } ${selectedSources.has(src) ? 'source-badge--selected' : ''}`}
+                    onClick={() => toggleSourceFilter(src)}
+                  >
+                    {SOURCE_BADGES[src]?.label || src}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="wildlife-filters__section">
+              <div className="wildlife-filters__label">Sort by</div>
+              <div className="wildlife-filters__pills">
+                {([
+                  { key: 'count' as SortMode, label: 'Count' },
+                  { key: 'alpha' as SortMode, label: 'A → Z' },
+                  { key: 'recent' as SortMode, label: 'Recent' },
+                ]).map((opt) => (
+                  <button
+                    key={opt.key}
+                    className={`wildlife-tile__filter-pill ${
+                      sortBy === opt.key ? 'wildlife-tile__filter-pill--active' : ''
+                    }`}
+                    onClick={() => setSortBy(opt.key)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activeFilterCount > 0 && (
+              <button className="wildlife-filters__clear" onClick={clearFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Loading/Error states */}
         {isLoading && <div className="wildlife-tile__status">Loading sightings...</div>}

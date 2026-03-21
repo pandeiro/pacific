@@ -4,12 +4,81 @@
   flex-direction: column;
 }
 
-.wildlife-tile__search {
-  padding: 0.75rem 0 0.5rem 0;
-  margin-bottom: 0.625rem;
+/* ── Header: gear button ─────────────────────────────────────────────── */
+
+.wildlife-tile__gear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  position: relative;
+  padding: 0;
 }
 
-.wildlife-tile__search-input {
+.wildlife-tile__gear:hover {
+  color: var(--teal-glow);
+  background: rgba(65, 184, 220, 0.1);
+}
+
+.wildlife-tile__gear--active {
+  color: var(--teal-glow);
+  background: rgba(65, 184, 220, 0.15);
+}
+
+.wildlife-tile__gear-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  background: var(--teal-glow);
+  color: #0a1628;
+  border-radius: 7px;
+  font-size: 0.5rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+/* ── Filter inset panel ───────────────────────────────────────────────── */
+
+.wildlife-filters {
+  border-top: 1px solid rgba(65, 184, 220, 0.15);
+  padding: 0.875rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  background: rgba(10, 22, 40, 0.6);
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wildlife-filters__search {
+  width: 100%;
+}
+
+.wildlife-filters__search .wildlife-tile__search-input {
   width: 100%;
   padding: 0.5rem 0.625rem;
   background: rgba(10, 22, 40, 0.5);
@@ -19,24 +88,57 @@
   font-size: 0.8125rem;
   font-family: var(--font-mono);
   transition: all var(--transition-fast);
+  box-sizing: border-box;
 }
 
-.wildlife-tile__search-input:focus {
+.wildlife-filters__search .wildlife-tile__search-input:focus {
   outline: none;
   border-color: var(--teal-glow);
   background: rgba(10, 22, 40, 0.7);
 }
 
-.wildlife-tile__search-input::placeholder {
+.wildlife-filters__search .wildlife-tile__search-input::placeholder {
   color: var(--text-muted);
 }
 
-.wildlife-tile__filters {
+.wildlife-filters__section {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 0.875rem;
-  flex-wrap: wrap;
 }
+
+.wildlife-filters__label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.wildlife-filters__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wildlife-filters__clear {
+  background: none;
+  border: none;
+  color: var(--glow-coral);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: opacity var(--transition-fast);
+}
+
+.wildlife-filters__clear:hover {
+  opacity: 0.75;
+}
+
+/* ── Filter pills ─────────────────────────────────────────────────────── */
 
 .wildlife-tile__filter-pill {
   padding: 0.375rem 0.75rem;
@@ -62,6 +164,8 @@
   color: var(--teal-glow);
 }
 
+/* ── Status messages ──────────────────────────────────────────────────── */
+
 .wildlife-tile__status {
   padding: 1.5rem;
   text-align: center;
@@ -72,6 +176,8 @@
 .wildlife-tile__status--error {
   color: var(--glow-coral);
 }
+
+/* ── Sightings list ──────────────────────────────────────────────────── */
 
 .sightings-container {
   flex: 1;
@@ -103,7 +209,8 @@
   gap: 0.5rem;
 }
 
-/* Aggregated species row */
+/* ── Species row ──────────────────────────────────────────────────────── */
+
 .species-row {
   padding: 0.625rem;
   background: rgba(10, 22, 40, 0.5);
@@ -168,7 +275,8 @@
   flex-wrap: wrap;
 }
 
-/* Source badges */
+/* ── Source badges ───────────────────────────────────────────────────── */
+
 .source-badge {
   padding: 0.25rem 0.5rem;
   background: rgba(65, 184, 220, 0.1);
@@ -192,6 +300,12 @@
   background: rgba(65, 184, 220, 0.2);
 }
 
+.source-badge--selected {
+  background: rgba(65, 184, 220, 0.25);
+  border-color: var(--teal-glow);
+  color: var(--teal-glow);
+}
+
 .badge--green {
   background: rgba(76, 175, 80, 0.1);
   border-color: rgba(76, 175, 80, 0.3);
@@ -200,6 +314,12 @@
 .badge--green:hover {
   color: rgb(76, 175, 80);
   border-color: rgb(76, 175, 80);
+}
+
+.badge--green.source-badge--selected {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgb(76, 175, 80);
+  color: rgb(76, 175, 80);
 }
 
 .badge--blue {
@@ -212,6 +332,12 @@
   border-color: rgb(33, 150, 243);
 }
 
+.badge--blue.source-badge--selected {
+  background: rgba(33, 150, 243, 0.2);
+  border-color: rgb(33, 150, 243);
+  color: rgb(33, 150, 243);
+}
+
 .badge--teal {
   background: rgba(0, 188, 212, 0.1);
   border-color: rgba(0, 188, 212, 0.3);
@@ -220,6 +346,12 @@
 .badge--teal:hover {
   color: rgb(0, 188, 212);
   border-color: rgb(0, 188, 212);
+}
+
+.badge--teal.source-badge--selected {
+  background: rgba(0, 188, 212, 0.2);
+  border-color: rgb(0, 188, 212);
+  color: rgb(0, 188, 212);
 }
 
 .badge--orange {
@@ -232,6 +364,12 @@
   border-color: rgb(255, 152, 0);
 }
 
+.badge--orange.source-badge--selected {
+  background: rgba(255, 152, 0, 0.2);
+  border-color: rgb(255, 152, 0);
+  color: rgb(255, 152, 0);
+}
+
 .badge--gray {
   background: rgba(158, 158, 158, 0.1);
   border-color: rgba(158, 158, 158, 0.3);
@@ -240,4 +378,10 @@
 .badge--gray:hover {
   color: rgb(158, 158, 158);
   border-color: rgb(158, 158, 158);
+}
+
+.badge--gray.source-badge--selected {
+  background: rgba(158, 158, 158, 0.2);
+  border-color: rgb(158, 158, 158);
+  color: rgb(158, 158, 158);
 }
