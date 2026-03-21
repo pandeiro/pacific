@@ -16,6 +16,24 @@ export interface Condition {
   trend?: 'up' | 'down' | 'stable';
 }
 
+export type TaxonGroup = 'whale' | 'dolphin' | 'shark' | 'pinniped' | 'bird' | 'other';
+
+export interface SightingRecord {
+  id: number;
+  timestamp: string;
+  species: string;
+  taxon_group: TaxonGroup;
+  count: number | null;
+  location_id: number | null;
+  location_name: string | null;
+  source: string;
+  source_url: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  raw_text: string | null;
+  metadata: Record<string, unknown>;
+}
+
+// Legacy type (deprecated, kept for backward compatibility)
 export interface Sighting {
   id: string;
   species: string;
@@ -130,4 +148,10 @@ export interface VisibilityResponse {
   source: string | null;
   source_url: string | null;
   last_updated: string | null;
+}
+
+export interface SightingsResponse {
+  sightings: SightingRecord[];
+  total: number;
+  days_requested: number;
 }
