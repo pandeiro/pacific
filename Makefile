@@ -29,10 +29,7 @@ down:
 	docker compose down
 
 migrate:
-	@for file in api/migrations/*.sql; do \
-		echo "Running migration: $$file"; \
-		cat $$file | docker compose exec -T postgres psql -U pacifica -d pacifica || exit 1; \
-	done
+	docker compose exec api alembic upgrade head
 	@echo "All migrations completed."
 
 seed:
