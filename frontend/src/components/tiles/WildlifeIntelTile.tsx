@@ -21,8 +21,10 @@ const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
 
 const TAXON_GROUPS: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bird', 'other'];
 
-function formatRecency(timestamp: string): string {
-  const date = new Date(timestamp);
+function formatRecency(sightingDate: string | null): string {
+  if (!sightingDate) return '';
+  
+  const date = new Date(sightingDate);
   
   const formatter = new Intl.DateTimeFormat('en-US', {
     month: 'numeric',
@@ -31,14 +33,15 @@ function formatRecency(timestamp: string): string {
   return formatter.format(date);
 }
 
-function getTimeGroup(timestamp: string): string {
-  const date = new Date(timestamp);
+function getTimeGroup(sightingDate: string | null): string {
+  if (!sightingDate) return 'Older';
+  
+  const date = new Date(sightingDate);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-  if (diffHours < 24) {
+  if (diffDays < 1) {
     return 'Today';
   }
   if (diffDays < 7) {
@@ -93,7 +96,7 @@ export function WildlifeIntelTile() {
     };
 
     filteredSightings.forEach((s) => {
-      const group = getTimeGroup(s.timestamp);
+      const group = getTimeGroup(s.sighting_date);
       if (group in groups) {
         groups[group].push(s);
       }
@@ -202,7 +205,7 @@ export function WildlifeIntelTile() {
                               </>
                             )}
                             <span className="sighting-item__time">
-                              {formatRecency(sighting.timestamp)}
+                              {formatRecency(sighting.sighting_date)}
                             </span>
                             <span className="sighting-item__dot">·</span>
                             <button

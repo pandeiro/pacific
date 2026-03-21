@@ -178,12 +178,13 @@ async def get_sightings(
     # Parse quality filter
     quality_levels = [q.strip().lower() for q in quality.split(",")]
 
-    # Calculate time window
+    # Calculate time window based on sighting_date
     now = datetime.now(timezone.utc)
-    start_time = now - timedelta(days=days)
+    today = now.date()
+    start_date = today - timedelta(days=days - 1)
 
     # Query sightings
-    query = select(Sighting).where(Sighting.timestamp >= start_time)
+    query = select(Sighting).where(Sighting.sighting_date >= start_date)
 
     # Filter by confidence
     if quality_levels:
@@ -217,6 +218,7 @@ async def get_sightings(
         record = SightingRecord(
             id=sighting.id,
             timestamp=sighting.timestamp,
+            sighting_date=sighting.sighting_date,
             species=canonical_species,
             taxon_group=taxon_group,
             count=sighting.count,

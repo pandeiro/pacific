@@ -21,6 +21,7 @@ export type TaxonGroup = 'whale' | 'dolphin' | 'shark' | 'pinniped' | 'bird' | '
 export interface SightingRecord {
   id: number;
   timestamp: string;
+  sighting_date: string | null;
   species: string;
   taxon_group: TaxonGroup;
   count: number | null;

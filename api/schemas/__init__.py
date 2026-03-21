@@ -1,6 +1,6 @@
 """Pydantic schemas for tides and sun events API."""
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -115,6 +115,7 @@ class SightingRecord(BaseModel):
 
     id: int
     timestamp: datetime
+    sighting_date: Optional[date] = None
     species: str
     taxon_group: str
     count: Optional[int] = None
