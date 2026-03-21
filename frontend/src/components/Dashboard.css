@@ -229,6 +229,7 @@
     overflow-y: auto;
     height: auto;
     min-height: 100vh;
+    -webkit-overflow-scrolling: touch;
   }
   
   .dashboard__main {
