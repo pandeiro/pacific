@@ -9,7 +9,7 @@ interface LiveCamTileProps {
 
 function getEmbedSrc(cam: LiveCam): string {
   if (cam.embed_type === 'youtube') {
-    return `https://www.youtube.com/embed/${cam.embed_url}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1`;
+    return `https://www.youtube.com/embed/${cam.embed_url}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&fs=0`;
   }
   return cam.embed_url;
 }
