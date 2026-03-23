@@ -95,6 +95,8 @@
   grid-column: 1 / -1;
   grid-row: 2;
   min-height: 0;
+  position: relative;
+  overflow: visible;
 }
 
 /* Tile Base Styles */

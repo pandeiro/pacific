@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import './SeasonalTimelineTile.css';
+import { Modal } from '../Modal';
 import { useSeasonalEvents } from '../../hooks/useSeasonalEvents';
 import type { SeasonalEvent } from '../../types';
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const currentMonth = new Date().getMonth();
 
 const categoryEmoji: Record<string, string> = {
@@ -14,106 +17,135 @@ const categoryEmoji: Record<string, string> = {
   tidal: '🌊',
 };
 
-function buildTooltip(event: SeasonalEvent): string {
-  const parts: string[] = [];
-  if (event.description) parts.push(event.description);
-  if (event.conditions_text) parts.push(`⚡ ${event.conditions_text}`);
-  if (event.locations.length > 0) {
-    parts.push(`📍 ${event.locations.map(l => l.name).join(', ')}`);
-  }
-  return parts.join('\n') || event.name;
+function getEventStyle(event: SeasonalEvent) {
+  const startMonth = event.typical_start_month - 1;
+  const endMonth = event.typical_end_month - 1;
+  const left = (startMonth / 12) * 100;
+  const width = startMonth <= endMonth
+    ? ((endMonth - startMonth + 1) / 12) * 100
+    : ((12 - startMonth + endMonth + 1) / 12) * 100;
+  return { left: `${left}%`, width: `${width}%` };
 }
 
-function isActiveInMonth(event: SeasonalEvent, month: number): boolean {  // Events spanning year boundary (e.g., lobster: Oct 10 → Mar 15)
+function isActiveInMonth(event: SeasonalEvent, month: number): boolean {
   if (event.typical_start_month > event.typical_end_month) {
     return month >= (event.typical_start_month - 1) || month <= (event.typical_end_month - 1);
   }
   return month >= (event.typical_start_month - 1) && month <= (event.typical_end_month - 1);
 }
 
+function formatTimespan(event: SeasonalEvent): string {
+  return `${monthNames[event.typical_start_month - 1]} ${event.typical_start_day} — ${monthNames[event.typical_end_month - 1]} ${event.typical_end_day}`;
+}
+
 export function SeasonalTimelineTile() {
   const { events, isLoading, error } = useSeasonalEvents();
-
-  const getEventStyle = (event: SeasonalEvent) => {
-    const startMonth = event.typical_start_month - 1; // 0-indexed
-    const endMonth = event.typical_end_month - 1;
-    const left = (startMonth / 12) * 100;
-
-    // Handle year-wrap events (e.g., lobster: month 10 → 3)
-    const width = startMonth <= endMonth
-      ? ((endMonth - startMonth + 1) / 12) * 100
-      : ((12 - startMonth + endMonth + 1) / 12) * 100;
-
-    return { left: `${left}%`, width: `${width}%` };
-  };
+  const [expanded, setExpanded] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<SeasonalEvent | null>(null);
 
   const currentMarkerPosition = ((currentMonth + 0.5) / 12) * 100;
 
-  // Legend categories present in the data
-  const categories = [...new Set(events.map(e => e.category))].sort();
-
   return (
-    <div className="tile seasonal-timeline">
-      <div className="tile__header">
-        <div className="tile__title">
-          <span className="tile__title-icon">📅</span>
-          Seasonal
+    <>
+      <div
+        className={`seasonal-timeline ${expanded ? 'seasonal-timeline--expanded' : ''}`}
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+      >
+        <div className="seasonal-timeline__months">
+          {months.map((m, i) => (
+            <div
+              key={i}
+              className={`seasonal-timeline__month ${i === currentMonth ? 'seasonal-timeline__month--current' : ''}`}
+            >
+              {m}
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div className="tile__content">
-        {isLoading && (
-          <div className="timeline-loading">Loading events…</div>
-        )}
-
-        {error && !isLoading && (
-          <div className="timeline-loading">Events unavailable</div>
-        )}
-
-        {!isLoading && !error && (
-          <div className="timeline-container">
-            <div className="timeline-track">
-              <div className="timeline-months">
-                {months.map((month, i) => (
-                  <div
-                    key={month}
-                    className={`timeline-month ${i === currentMonth ? 'timeline-month--current' : ''}`}
-                  >
-                    {month}
-                  </div>
-                ))}
-              </div>
-
-              <div className="timeline-events">
-                {events.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`timeline-event timeline-event--${event.category} ${isActiveInMonth(event, currentMonth) ? 'timeline-event--active' : ''}`}
-                    style={getEventStyle(event)}
-                    title={buildTooltip(event)}
-                  >
-                    {categoryEmoji[event.category] ?? '📋'} {event.name}
-                  </div>
-                ))}
-              </div>
-
+        <div className="seasonal-timeline__bars">
+          {isLoading && <div className="seasonal-timeline__empty">Loading…</div>}
+          {error && !isLoading && <div className="seasonal-timeline__empty">Unavailable</div>}
+          {!isLoading && !error && events.map((event, idx) => {
+            const row = idx % 6;
+            return (
               <div
-                className="timeline-current-marker"
-                style={{ left: `${currentMarkerPosition}%` }}
-              />
+                key={event.id}
+                className={`seasonal-timeline__bar seasonal-timeline__bar--${event.category} ${isActiveInMonth(event, currentMonth) ? 'seasonal-timeline__bar--active' : ''}`}
+                style={{
+                  ...getEventStyle(event),
+                  '--bar-row': row,
+                } as React.CSSProperties}
+                onClick={() => setSelectedEvent(event)}
+              >
+                <span className="seasonal-timeline__bar-label">{event.name}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div
+          className="seasonal-timeline__marker"
+          style={{ left: `${currentMarkerPosition}%` }}
+        />
+      </div>
+
+      {selectedEvent && (
+        <Modal isOpen onClose={() => setSelectedEvent(null)}>
+          <div className="event-detail">
+            <div className="event-detail__header">
+              <span className="event-detail__emoji">
+                {categoryEmoji[selectedEvent.category] ?? '📋'}
+              </span>
+              <div>
+                <h2 className="event-detail__title">{selectedEvent.name}</h2>
+                <span className="event-detail__category">{selectedEvent.category}</span>
+              </div>
             </div>
 
-            <div className="timeline-legend">
-              {categories.map(cat => (
-                <div key={cat} className="timeline-legend__item">
-                  <div className={`timeline-legend__dot timeline-legend__dot--${cat}`} />
-                  <span>{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
-                </div>
-              ))}
+            {selectedEvent.description && (
+              <p className="event-detail__description">{selectedEvent.description}</p>
+            )}
+
+            <div className="event-detail__section">
+              <div className="event-detail__label">Timespan</div>
+              <div className="event-detail__value">{formatTimespan(selectedEvent)}</div>
             </div>
+
+            {selectedEvent.species && (
+              <div className="event-detail__section">
+                <div className="event-detail__label">Species</div>
+                <div className="event-detail__value event-detail__value--italic">{selectedEvent.species}</div>
+              </div>
+            )}
+
+            {selectedEvent.conditions_text && (
+              <div className="event-detail__section">
+                <div className="event-detail__label">
+                  Conditions
+                  {selectedEvent.conditions_type && (
+                    <span className="event-detail__condition-type">({selectedEvent.conditions_type})</span>
+                  )}
+                </div>
+                <div className="event-detail__value">{selectedEvent.conditions_text}</div>
+              </div>
+            )}
+
+            {selectedEvent.locations.length > 0 && (
+              <div className="event-detail__section">
+                <div className="event-detail__label">Locations</div>
+                <div className="event-detail__locations">
+                  {selectedEvent.locations.map(loc => (
+                    <span key={loc.id} className="event-detail__location-chip">
+                      {loc.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </Modal>
+      )}
+    </>
   );
 }
