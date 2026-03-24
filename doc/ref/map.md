@@ -53,11 +53,12 @@ The bearing of `-45°` rotates the map so the SoCal coastline (which runs ~315°
 
 Source: `locations` — dynamically generated from `/api/locations` response.
 
-| Layer ID | Type | Purpose |
-|----------|------|---------|
-| `location-dots` | circle | Unselected locations |
-| `location-selected` | circle | Currently selected location (larger, glowing) |
-| `location-labels` | symbol | Location name text |
+| Layer ID | Type | Purpose | Visibility |
+|----------|------|---------|------------|
+| `location-dots` | circle | Default tiny dots (radius 3) | Always |
+| `location-hover` | circle | Expanded dot on hover (radius 6) | On hover only |
+| `location-selected` | circle | Currently selected (radius 8, glowing) | Selected only |
+| `location-labels` | symbol | Location name text | On hover only |
 
 **Color coding by `location_type`:**
 | Type | Color |
@@ -67,6 +68,10 @@ Source: `locations` — dynamically generated from `/api/locations` response.
 | island | `#ffd93d` (amber) |
 | tidepool | `#c084fc` (purple) |
 | viewpoint | `#ff9f43` (orange) |
+
+### User Location
+
+Uses browser Geolocation API (`navigator.geolocation`). Shows a pulsating blue dot marker with CSS animation. Silently skipped if user denies permission.
 
 ### Public Lands Overlay
 
@@ -95,28 +100,27 @@ Source: `/data/socal-public-lands.geojson` — static GeoJSON file.
 
 ## Public Lands Data
 
-### Current Data
-`frontend/public/data/socal-public-lands.geojson` — hand-crafted simplified polygons for the major SoCal public lands:
+### Current Data Source
+Live query to **CPAD (California Protected Areas Database)** ArcGIS REST API:
+- Endpoint: `https://gis.cnra.ca.gov/arcgis/rest/services/Boundaries/CPAD_AgencyLevel/MapServer/1/query`
+- Bounding box: SoCal region (-121.0 to -117.0 lon, 32.5 to 35.5 lat)
+- Up to 2000 features per query, clipped to viewport area
+- Color-coded by agency level: Federal, State, Special District, County, City, Non Profit
+- Hover popup shows unit name, agency level, and access type
 
-- Angeles National Forest (USFS)
-- Los Padres National Forest (USFS)
-- Cleveland National Forest (USFS)
-- Channel Islands National Park (NPS)
-- Santa Monica Mountains NRA (NPS)
-- Crystal Cove State Park
-- Torrey Pines State Natural Reserve
-- Point Mugu State Park
-- Morro Bay State Park
-- San Onofre State Beach
+### Layer IDs
+| Layer ID | Type | Purpose |
+|----------|------|---------|
+| `public-lands-fill` | fill | Semi-transparent green overlay by agency level |
+| `public-lands-outline` | line | Boundary outline |
 
-### Better Data Sources (TODO)
-For accurate boundaries, replace with processed data from:
+### Alternative: Self-hosted Static GeoJSON
+For production or offline use, process CPAD/PAD-US data locally:
 
 | Source | Coverage | Format | Notes |
 |--------|----------|--------|-------|
-| **USGS PAD-US 4.1** | Federal lands (USFS, NPS, BLM) | GDB → GeoJSON | [Download CA clip](https://www.sciencebase.gov/catalog/item/6759abcfd34edfeb8710a004) |
-| **CPAD 2025a** | State/local/NGO lands | SHP → GeoJSON | [Download](https://data.cnra.ca.gov/dataset/cpad) |
-| **30x30 Conserved Areas** | Subset of above | GeoJSON | [Download](https://data.ca.gov/dataset/30x30-conserved-areas-terrestrial-2024) |
+| **CPAD 2025b** | All CA protected lands | SHP → GeoJSON | [Download](https://data.cnra.ca.gov/dataset/cpad) |
+| **PAD-US 4.1** | All US public lands | GDB → GeoJSON | [Download](https://www.sciencebase.gov/catalog/item/652d4fc5d34e44db0e2ee45e) |
 
 **Processing workflow:**
 ```bash
@@ -124,16 +128,12 @@ For accurate boundaries, replace with processed data from:
 brew install gdal
 npm install -g mapshaper
 
-# Convert PAD-US GDB to GeoJSON, clip to SoCal
-ogr2ogr -f GeoJSON -spat -121.5 32.5 -117 35.6 \
-  socal_protected.geojson PADUS4_1_CA.gdb PADUS4_1Combined
+# Convert CPAD SHP to GeoJSON, clip to SoCal
+ogr2ogr -f GeoJSON -spat -121.0 32.5 -117.0 35.5 \
+  socal_public_lands.geojson CPAD_2025b_Holdings.shp
 
 # Simplify for web
-mapshaper socal_protected.geojson -simplify 10% -o public/data/
-
-# Merge with CPAD data if needed
-mapshaper -merge-layers cpad_socal.geojson padus_socal.geojson \
-  -o public/data/socal-public-lands.geojson
+mapshaper socal_public_lands.geojson -simplify 10% -o frontend/public/data/
 ```
 
 ## Component Interface
@@ -161,8 +161,19 @@ interface MapTileProps {
 
 ## Future Enhancements
 
-- [ ] Swap hand-crafted GeoJSON for PAD-US/CPAD processed data
+- [ ] Download + process PAD-US/CPAD for self-hosted production data
 - [ ] Add wildlife sighting density heatmap layer
 - [ ] Click popup with location summary + drive time
 - [ ] Drill-down zoom on location click
 - [ ] Layer toggle controls (show/hide public lands, labels, etc.)
+
+## Map Style Options
+
+| Key | Provider | Style | Cost | Theme |
+|-----|----------|-------|------|-------|
+| `dark` | CartoDB | dark-matter-nolabels | Free | Dark, clean (default) |
+| `fiord` | OpenFreeMap | fiord | Free | Blue-dark, oceanic |
+| `dark2` | CartoDB | dark-matter (with labels) | Free | Dark with street labels |
+| `positron` | CartoDB | positron-nolabels | Free | Light, clean |
+
+Style toggle buttons appear in the tile header. Switching styles preserves all custom layers.

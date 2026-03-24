@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapTile.css';
@@ -10,11 +10,33 @@ interface MapTileProps {
   onLocationChange?: (locationId: number) => void;
 }
 
-const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json';
-const PUBLIC_LANDS_URL = '/data/socal-public-lands.geojson';
+const MAP_STYLES: Record<string, { url: string; label: string }> = {
+  dark: {
+    url: 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
+    label: 'Dark',
+  },
+  fiord: {
+    url: 'https://tiles.openfreemap.org/styles/fiord',
+    label: 'Fiord',
+  },
+  dark2: {
+    url: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    label: 'Dark+',
+  },
+  positron: {
+    url: 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json',
+    label: 'Positron',
+  },
+};
+
+// CPAD ArcGIS REST — SoCal bbox query
+const CPAD_REST_URL =
+  'https://gis.cnra.ca.gov/arcgis/rest/services/Boundaries/CPAD_AgencyLevel/MapServer/1/query';
 
 // Rotate map so NW-SE coastline runs vertically
 const COASTLINE_BEARING = -45;
+
+const SOCAL_BBOX = [-121.0, 32.5, -117.0, 35.5];
 
 const TYPE_COLORS: Record<string, string> = {
   harbor: '#2d8b96',
@@ -56,13 +78,62 @@ function fitMapToLocations(map: maplibregl.Map, locations: Location[]) {
   map.fitBounds(bounds, { padding: 30, maxZoom: 10, bearing: COASTLINE_BEARING });
 }
 
+async function fetchPublicLands(bbox: number[]): Promise<GeoJSON.FeatureCollection | null> {
+  const params = new URLSearchParams({
+    where: '1=1',
+    outFields: 'UNIT_NAME,ACCESS_TYP,AGNCY_LEV,AGNCY_NAME,AGNCY_TYP,LAYER',
+    f: 'geojson',
+    returnGeometry: 'true',
+    geometry: JSON.stringify({
+      xmin: bbox[0],
+      ymin: bbox[1],
+      xmax: bbox[2],
+      ymax: bbox[3],
+    }),
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outSR: '4326',
+    resultRecordCount: '2000',
+  });
+
+  try {
+    const res = await fetch(`${CPAD_REST_URL}?${params}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.features?.length) return null;
+
+    // Transform CPAD properties to match our layer expectations
+    data.features = data.features.map((f: GeoJSON.Feature) => ({
+      ...f,
+      properties: {
+        name: f.properties?.UNIT_NAME || 'Unknown',
+        access: f.properties?.ACCESS_TYP || 'Unknown',
+        agency_level: f.properties?.AGNCY_LEV || 'Unknown',
+        agency: f.properties?.AGNCY_NAME || '',
+        type: f.properties?.LAYER || f.properties?.AGNCY_LEV || 'Unknown',
+      },
+    }));
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export function MapTile({ locationId, onLocationChange }: MapTileProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const styleLoadedRef = useRef(false);
   const mountedRef = useRef(true);
+  const locationsRef = useRef<Location[]>([]);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const { locations } = useLocations();
+  const [currentStyle, setCurrentStyle] = useState('dark');
+
+  // Keep ref in sync so callbacks always see current locations
+  locationsRef.current = locations;
 
   const handleMapClick = useCallback(
     (e: maplibregl.MapMouseEvent & { features?: GeoJSON.Feature[] }) => {
@@ -109,7 +180,7 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
 
     map.addSource('locations', {
       type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] },
+      data: locationsToGeoJSON(locationsRef.current),
     });
 
     map.addLayer({
@@ -117,13 +188,28 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
       type: 'circle',
       source: 'locations',
       paint: {
+        'circle-radius': 3,
+        'circle-color': ['get', 'color'],
+        'circle-stroke-width': 1,
+        'circle-stroke-color': 'rgba(255,255,255,0.5)',
+        'circle-opacity': 0.85,
+      },
+      filter: ['!=', ['get', 'id'], -1],
+    });
+
+    // Hovered dot — hidden by default, shown via filter on mousemove
+    map.addLayer({
+      id: 'location-hover',
+      type: 'circle',
+      source: 'locations',
+      paint: {
         'circle-radius': 6,
         'circle-color': ['get', 'color'],
         'circle-stroke-width': 2,
-        'circle-stroke-color': 'rgba(255,255,255,0.8)',
-        'circle-opacity': 0.9,
+        'circle-stroke-color': 'rgba(255,255,255,0.9)',
+        'circle-opacity': 1,
       },
-      filter: ['!=', ['get', 'id'], -1],
+      filter: ['==', ['get', 'id'], -1],
     });
 
     map.addLayer({
@@ -131,9 +217,9 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
       type: 'circle',
       source: 'locations',
       paint: {
-        'circle-radius': 10,
+        'circle-radius': 8,
         'circle-color': '#00d4aa',
-        'circle-stroke-width': 3,
+        'circle-stroke-width': 2.5,
         'circle-stroke-color': '#ffffff',
         'circle-blur': 0.15,
         'circle-opacity': 1,
@@ -141,6 +227,7 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
       filter: ['==', ['get', 'id'], -1],
     });
 
+    // Labels — only shown on hover
     map.addLayer({
       id: 'location-labels',
       type: 'symbol',
@@ -148,25 +235,40 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
       layout: {
         'text-field': ['get', 'name'],
         'text-size': 10,
-        'text-offset': [0, 1.4],
+        'text-offset': [0, 1.2],
         'text-anchor': 'top',
         'text-font': ['Noto Sans Regular'],
+        'text-allow-overlap': false,
       },
       paint: {
         'text-color': '#e8f4f8',
         'text-halo-color': '#050a14',
         'text-halo-width': 1.5,
       },
+      filter: ['==', ['get', 'id'], -1],
     });
+
+    function handleDotHover(e: maplibregl.MapMouseEvent & { features?: GeoJSON.Feature[] }) {
+      if (!e.features?.length) return;
+      map.getCanvas().style.cursor = 'pointer';
+      const id = e.features[0].properties?.id;
+      if (typeof id !== 'number') return;
+      map.setFilter('location-hover', ['==', ['get', 'id'], id]);
+      map.setFilter('location-labels', ['==', ['get', 'id'], id]);
+    }
+
+    function handleDotLeave() {
+      map.getCanvas().style.cursor = '';
+      map.setFilter('location-hover', ['==', ['get', 'id'], -1]);
+      map.setFilter('location-labels', ['==', ['get', 'id'], -1]);
+      if (popupRef.current) popupRef.current.remove();
+    }
 
     map.on('click', 'location-dots', handleMapClick);
     map.on('click', 'location-selected', handleMapClick);
-    map.on('mousemove', 'location-dots', handleMapHover);
+    map.on('mousemove', 'location-dots', handleDotHover);
+    map.on('mouseleave', 'location-dots', handleDotLeave);
     map.on('mousemove', 'location-selected', handleMapHover);
-    map.on('mouseleave', 'location-dots', () => {
-      map.getCanvas().style.cursor = '';
-      if (popupRef.current) popupRef.current.remove();
-    });
     map.on('mouseleave', 'location-selected', () => {
       map.getCanvas().style.cursor = '';
       if (popupRef.current) popupRef.current.remove();
@@ -174,50 +276,82 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
 
     styleLoadedRef.current = true;
 
-    // Load and add public lands overlay
-    fetch(PUBLIC_LANDS_URL)
-      .then((res) => res.json())
-      .then((geojson: GeoJSON.FeatureCollection) => {
-        if (!mountedRef.current) return;
-        map.addSource('public-lands', { type: 'geojson', data: geojson });
+    // Load public lands from CPAD ArcGIS REST API
+    fetchPublicLands(SOCAL_BBOX).then((geojson) => {
+      if (!mountedRef.current || !geojson) return;
+      map.addSource('public-lands', { type: 'geojson', data: geojson });
 
-        map.addLayer({
+      map.addLayer(
+        {
           id: 'public-lands-fill',
           type: 'fill',
           source: 'public-lands',
           paint: {
-            'fill-color': ['match', ['get', 'type'],
-              'National Forest', '#1a4d2e',
-              'National Park', '#0d3b2a',
-              'National Recreation Area', '#1a4d2e',
-              'State Park', '#2d6b3f',
-              'State Beach', '#3a7d52',
-              '#2d5f3d'
+            'fill-color': [
+              'match',
+              ['get', 'type'],
+              'Federal', '#1a4d2e',
+              'State', '#2d6b3f',
+              'Special District', '#2a5f45',
+              'County', '#3a7d52',
+              'City', '#357a50',
+              'Non Profit', '#1f5c38',
+              '#2d5f3d',
             ],
-            'fill-opacity': 0.45,
+            'fill-opacity': 0.35,
           },
-        }, 'location-dots');
+        },
+        'location-dots',
+      );
 
-        map.addLayer({
+      map.addLayer(
+        {
           id: 'public-lands-outline',
           type: 'line',
           source: 'public-lands',
           paint: {
-            'line-color': ['match', ['get', 'type'],
-              'National Forest', '#3d8b4f',
-              'National Park', '#2d7a3f',
-              'State Park', '#4a9960',
-              'State Beach', '#5aab70',
-              '#4a8b5a'
+            'line-color': [
+              'match',
+              ['get', 'type'],
+              'Federal', '#3d8b4f',
+              'State', '#4a9960',
+              'Special District', '#4a8b5a',
+              'County', '#5aab70',
+              'City', '#55a06a',
+              'Non Profit', '#3f8b50',
+              '#4a8b5a',
             ],
-            'line-width': 1.5,
-            'line-opacity': 0.6,
+            'line-width': 1,
+            'line-opacity': 0.5,
           },
-        }, 'location-dots');
-      })
-      .catch(() => {
-        // Public lands data not available — continue without overlay
+        },
+        'location-dots',
+      );
+
+      // Hover popup for public lands
+      map.on('mousemove', 'public-lands-fill', (e) => {
+        if (!e.features?.length) return;
+        map.getCanvas().style.cursor = 'default';
+        const props = e.features[0].properties;
+        if (popupRef.current) popupRef.current.remove();
+        popupRef.current = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 8,
+          className: 'map-location-popup',
+        })
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div class="map-location-popup__name">${props?.name || 'Protected Area'}</div>
+             <div class="map-location-popup__type">${props?.agency_level || ''} · ${props?.access || ''}</div>`,
+          )
+          .addTo(map);
       });
+
+      map.on('mouseleave', 'public-lands-fill', () => {
+        if (popupRef.current) popupRef.current.remove();
+      });
+    });
   }, [handleMapClick, handleMapHover]);
 
   // Initialize map
@@ -228,7 +362,7 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: STYLE_URL,
+      style: MAP_STYLES[currentStyle].url,
       center: [-118.5, 34.0],
       zoom: 6,
       bearing: COASTLINE_BEARING,
@@ -238,6 +372,14 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
     });
 
     mapRef.current = map;
+
+    // Compass-only navigation control (no zoom buttons)
+    const nav = new maplibregl.NavigationControl({
+      showCompass: true,
+      showZoom: false,
+      visualizePitch: false,
+    });
+    map.addControl(nav, 'top-right');
 
     map.on('load', () => {
       if (mountedRef.current) {
@@ -260,17 +402,78 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
         }
       }, 0);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addLocationLayers]);
+
+  // Request user's geolocation and show pulsating marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!mountedRef.current || !mapRef.current) return;
+        const { longitude, latitude } = position.coords;
+
+        // Create pulsating dot marker
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+        el.innerHTML = '<div class="user-location-dot"></div><div class="user-location-pulse"></div>';
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([longitude, latitude])
+          .addTo(mapRef.current);
+
+        userMarkerRef.current = marker;
+      },
+      () => {
+        // User denied or error — silently skip
+      },
+      { enableHighAccuracy: false, timeout: 10000 },
+    );
+
+    return () => {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Switch map style without full re-initialization
+  const handleStyleSwitch = useCallback((styleKey: string) => {
+    const map = mapRef.current;
+    if (!map || styleKey === currentStyle) return;
+    styleLoadedRef.current = false;
+    setCurrentStyle(styleKey);
+    map.setStyle(MAP_STYLES[styleKey].url);
+    map.once('style.load', () => {
+      if (mountedRef.current) {
+        addLocationLayers(map);
+        // Re-apply location data
+        if (locationsRef.current.length > 0) {
+          const source = map.getSource('locations') as maplibregl.GeoJSONSource;
+          if (source) source.setData(locationsToGeoJSON(locationsRef.current));
+        }
+      }
+    });
+  }, [currentStyle, addLocationLayers]);
 
   // Update location data when locations load
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !styleLoadedRef.current || locations.length === 0) return;
 
-    const source = map.getSource('locations') as maplibregl.GeoJSONSource;
-    if (source) {
-      source.setData(locationsToGeoJSON(locations));
-      fitMapToLocations(map, locations);
+    try {
+      const source = map.getSource('locations') as maplibregl.GeoJSONSource;
+      if (source) {
+        source.setData(locationsToGeoJSON(locations));
+        fitMapToLocations(map, locations);
+      }
+    } catch {
+      // Source may not exist yet if style is still loading
     }
   }, [locations]);
 
@@ -298,6 +501,18 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
         <div className="tile__title">
           <span className="tile__title-icon">🗺️</span>
           Coastal Map
+        </div>
+        <div className="map-tile__styles">
+          {Object.entries(MAP_STYLES).map(([key, { label }]) => (
+            <button
+              key={key}
+              className={`map-tile__style-btn${key === currentStyle ? ' map-tile__style-btn--active' : ''}`}
+              onClick={() => handleStyleSwitch(key)}
+              title={`Switch to ${label} style`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
       <div className="map-tile__container" ref={mapContainer} />

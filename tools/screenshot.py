@@ -6,6 +6,7 @@ Usage:
     python tools/screenshot.py --env staging      # Staging environment
     python tools/screenshot.py --env prod         # Production environment
     python tools/screenshot.py --url http://...   # Custom URL
+    python tools/screenshot.py --wait 8           # Wait 8s for async content
 """
 
 from pathlib import Path
@@ -26,7 +27,10 @@ ENV_URLS = {
 
 
 def take_screenshot(
-    env: str = "local", url: Optional[str] = None, filename: Optional[str] = None
+    env: str = "local",
+    url: Optional[str] = None,
+    filename: Optional[str] = None,
+    wait_seconds: int = 5,
 ) -> Path:
     """Take a screenshot of the dashboard and save to screenshots directory.
 
@@ -34,17 +38,15 @@ def take_screenshot(
         env: Environment name (local, staging, prod) - used in filename
         url: Custom URL to screenshot (overrides env default)
         filename: Custom filename (overrides auto-generated name)
+        wait_seconds: Seconds to wait for async content (map tiles, API data)
 
     Returns:
         Path to saved screenshot
     """
-    # Ensure screenshots directory exists
     SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Determine URL
     target_url = url or ENV_URLS.get(env, ENV_URLS["local"])
 
-    # Generate filename with timestamp and environment if not provided
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"dashboard_{env}_{timestamp}.png"
@@ -54,10 +56,12 @@ def take_screenshot(
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        page.goto(target_url)
-        page.wait_for_load_state("networkidle")
+        page.goto(target_url, wait_until="domcontentloaded")
 
-        # Take full page screenshot
+        # Wait for DOM then give extra time for map tiles, WebGL, API calls
+        page.wait_for_load_state("load")
+        page.wait_for_timeout(wait_seconds * 1000)
+
         page.screenshot(path=str(screenshot_path), full_page=True)
         print(f"Screenshot saved to {screenshot_path}")
 
@@ -82,9 +86,17 @@ def main():
     parser.add_argument(
         "--filename", help="Custom filename (overrides auto-generated name)"
     )
+    parser.add_argument(
+        "--wait",
+        type=int,
+        default=5,
+        help="Seconds to wait for async content like map tiles (default: 5)",
+    )
 
     args = parser.parse_args()
-    take_screenshot(env=args.env, url=args.url, filename=args.filename)
+    take_screenshot(
+        env=args.env, url=args.url, filename=args.filename, wait_seconds=args.wait
+    )
 
 
 if __name__ == "__main__":

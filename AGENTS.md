@@ -120,7 +120,7 @@ make migrate
 - **Check DB constraints** before writing seed data. Valid values for `location_type`, `region`, `category`, etc. are enforced by CHECK constraints — query them with `SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conname LIKE 'table_name_%';`
 
 ### Screenshot Capture
-Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification:
+Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification. Uses Playwright directly (no agent-browser dependency):
 
 ```bash
 # Local environment (default) - ensure frontend is running
@@ -129,14 +129,14 @@ python tools/screenshot.py
 
 # Staging environment
 python tools/screenshot.py --env staging
-# Output: screenshots/dashboard_staging_YYYYMMDD_HHMMSS.png
 
 # Production environment
 python tools/screenshot.py --env prod
-# Output: screenshots/dashboard_prod_YYYYMMDD_HHMMSS.png
 
-# Custom URL
-python tools/screenshot.py --url http://localhost:4902
+# Custom URL with extra wait time for async content (map tiles, API calls)
+python tools/screenshot.py --url http://localhost:4902 --wait 8
 ```
+
+The script uses `wait_until="domcontentloaded"` + a configurable timeout (default 5s) instead of `networkidle`, which hangs when there are long-running requests like ArcGIS REST API calls. Use `--wait` to increase the delay for slow-loading map tiles or WebGL content.
 
 Screenshots are saved to the `screenshots/` directory (gitignored). Use this after making UI changes to verify the visual result.
